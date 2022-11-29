@@ -1,2 +1,2 @@
 # rdkit-build-helpers
-Dockerfiles and other recipes to build RDKit artifacts
+Dockerfiles and other recipes for building RDKit artifacts
