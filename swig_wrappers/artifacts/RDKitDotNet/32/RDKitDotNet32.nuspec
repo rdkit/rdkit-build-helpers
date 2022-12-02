@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>RDKitDotNet32</id>
+    <title>RDKitDotNet32</title>
+    <version>2022.09.2</version>
+    <authors>Paolo Tosco</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="file">license.txt</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <description>RDKit 32-bit C# bindings for Windows (x86).
+	    Compiled using gcc, g++, Mono.
+      Statically linked against all dependencies.
+	  </description>
+    <releaseNotes>Built from Release 2022_09_2 with ad-hoc Avalon patches.</releaseNotes>
+    <copyright>Copyright (c) 2022 Paolo Tosco</copyright>
+    <tags>rdkit linux windows macos</tags>
+    <dependencies>
+      <group targetFramework="net40" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src=".\license.txt" target="." />
+    <file src="lib\net40\RDKit2DotNet.dll" target="lib\net40" />
+    <file src="runtimes\win10-x86\RDKFuncs.dll" target="runtimes\win10-x86" />
+  </files>
+</package>
