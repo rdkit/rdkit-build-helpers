@@ -112,7 +112,7 @@ namespace RDKitSimpleTest32
                 molDraw.drawMolecule(erythromycin);
                 molDraw.finishDrawing();
                 string svg = molDraw.getDrawingText();
-                File.WriteAllText("C:/Temp/erythromycin_csharp.svg", svg);
+                File.WriteAllText("erythromycin_csharp.svg", svg);
             }
 
             string smiles = "CNCCNc1nc(nc2cc(ccc12)N3CCN(CC3)C(=O)/C=C/C4C=NN(C)C=4)C5(CCCC5)c6ccc(Cl)cc6";
@@ -126,7 +126,7 @@ namespace RDKitSimpleTest32
                 mol.straightenDepiction();
                 molDraw.drawMolecule(mol);
                 molDraw.finishDrawing();
-                molDraw.writeDrawingText("C:/Temp/rdkitSmiles.png");
+                molDraw.writeDrawingText("rdkitSmiles.png");
             }
             using (MolDraw2DCairo molDraw = new MolDraw2DCairo(200, 150))
             {
@@ -139,7 +139,7 @@ namespace RDKitSimpleTest32
                 mol.straightenDepiction();
                 molDraw.drawMolecule(mol);
                 molDraw.finishDrawing();
-                molDraw.writeDrawingText("C:/Temp/coordgenSmiles.png");
+                molDraw.writeDrawingText("coordgenSmiles.png");
             }
         }
     }
