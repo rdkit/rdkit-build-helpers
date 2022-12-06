@@ -238,6 +238,9 @@ RUN sed -i -e "s|\(optBuffer\[optString\.size()\)\( - 1\)\(\] = '\\\\n';\)|\1\3|
 RUN sed -i "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/gmwrapper/GraphMolJava.i
 RUN sed -i "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/csharp_wrapper/GraphMolCSharp.i
 
+# Patch for 2022.09.2 incorrectly reporting 2022.09.1
+RUN sed -i "s|^\(set(RDKit_Revision \"\)\(1\)\(\")\)|\12\3|" CMakeLists.txt
+
 RUN echo > win-${ARCH}.cmake -e \
     "set(CMAKE_SYSTEM_NAME Windows)\n" \
     "set(CMAKE_SYSTEM_VERSION 1)\n" \

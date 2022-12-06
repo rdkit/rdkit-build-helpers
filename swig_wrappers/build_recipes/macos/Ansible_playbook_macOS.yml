@@ -657,6 +657,11 @@
       args:
         chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}"
 
+    - name: Patch for 2022.09.2 incorrectly reporting 2022.09.1
+      ansible.builtin.shell: sed -i ".orig" "s|^\(set(RDKit_Revision \"\)\(1\)\(\")\)|\12\3|" CMakeLists.txt
+      args:
+        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}"
+
     - name: create build sub-directory
       ansible.builtin.shell: mkdir -p build
       args:
