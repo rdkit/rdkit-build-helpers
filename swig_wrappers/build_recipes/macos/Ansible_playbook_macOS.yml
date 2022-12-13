@@ -9,8 +9,8 @@
     BUILD_CONCURRENCY: 6
     MIN_MACOS_VERSION: "10.13"
     BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
-    RDKIT_RELEASE: "2022_09_2"
-    RDKIT_CHKSUM: "052d9eae42da57d5af91e9d06d3b4de1"
+    RDKIT_RELEASE: "2022_09_3"
+    RDKIT_CHKSUM: "1c2df38b2578cebadb64cc76753a6e5c"
     PKGCONFIG_VERSION: "0.29.2"
     PKGCONFIG_CHECKSUM: "76e501663b29cb7580245720edfb6106164fad2b"
     ZLIB_VERSION: "1.2.13"
@@ -639,9 +639,9 @@
           -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(.*\)\()\)|\1\2\3 {{ DEPS }}/lib/libz.a {{ DEPS }}/lib/libbz2.a\4|" \
           Code/GraphMol/MolDraw2D/CMakeLists.txt && \
         sed -i ".orig" -e "s|if(WIN32)|if(FALSE)|" \
-          -e "s|\(SWIG_LINK_LIBRARIES *( *\)\(GraphMolWrap *\)\(\${RDKit_Wrapper_Libs}\)|\1\2\3 {{ DEPS }}/lib/libz.a {{ DEPS }}/lib/libbz2.a {{ DEPS }}/lib/libpixman-1.a {{ DEPS }}/lib/libpng16.a \"-framework CoreFoundation\" \"-framework CoreGraphics\"|" \
+          -e "s|\(SWIG_LINK_LIBRARIES *( *\)\(GraphMolWrap *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,-undefined,error;\${RDKit_Wrapper_Libs};{{ DEPS }}/lib/libcairo.a;{{ DEPS }}/lib/libpixman-1.a;{{ DEPS }}/lib/libpng16.a;{{ DEPS }}/lib/libz.a;{{ DEPS }}/lib/libbz2.a\")\n\1\2\3 \"-framework CoreFoundation\" \"-framework CoreGraphics\"|" \
           Code/JavaWrappers/gmwrapper/CMakeLists.txt && \
-        sed -i ".orig" "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|\1\2\3 {{ DEPS }}/lib/libz.a {{ DEPS }}/lib/libbz2.a {{ DEPS }}/lib/libpixman-1.a {{ DEPS }}/lib/libpng16.a \"-framework CoreFoundation\" \"-framework CoreGraphics\"|" \
+        sed -i ".orig" "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,-undefined,error;\${RDKit_Wrapper_Libs};{{ DEPS }}/lib/libcairo.a;{{ DEPS }}/lib/libpixman-1.a;{{ DEPS }}/lib/libpng16.a;{{ DEPS }}/lib/libz.a;{{ DEPS }}/lib/libbz2.a\")\n\1\2\3 \"-framework CoreFoundation\" \"-framework CoreGraphics\"|" \
           Code/JavaWrappers/csharp_wrapper/CMakeLists.txt && \
         sed -i ".orig" "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/gmwrapper/GraphMolJava.i && \
         sed -i ".orig" "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/csharp_wrapper/GraphMolCSharp.i
@@ -654,11 +654,6 @@
         External/AvalonTools/CMakeLists.txt && \
         sed -i ".orig" -e "s|\(optBuffer\[optString\.size()\)\( - 1\)\(\] = '\\\\n';\)|\1\3|" \
         -e "s|\(optBuffer\[optString.size()\)\(\]\)\( = '\\\\0';\)|\1 + 1\2\3|" External/AvalonTools/AvalonTools.cpp
-      args:
-        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}"
-
-    - name: Patch for 2022.09.2 incorrectly reporting 2022.09.1
-      ansible.builtin.shell: sed -i ".orig" "s|^\(set(RDKit_Revision \"\)\(1\)\(\")\)|\12\3|" CMakeLists.txt
       args:
         chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}"
 
@@ -710,9 +705,18 @@
 
     - name: build RDKit
       ansible.builtin.shell: make -j{{ BUILD_CONCURRENCY }} clean && \
-        make -j{{ BUILD_CONCURRENCY }} && make -j{{ BUILD_CONCURRENCY }} install && \
-        cp ../Code/JavaWrappers/gmwrapper/libGraphMolWrap.jnilib ../Code/JavaWrappers/gmwrapper/org.RDKit*.jar {{ IMAGE }} && \
-        cp ../Code/JavaWrappers/csharp_wrapper/RDKFuncs.so ../Code/JavaWrappers/csharp_wrapper/RDKit2DotNet.dll {{ IMAGE }}
+        make -j{{ BUILD_CONCURRENCY }} && make -j{{ BUILD_CONCURRENCY }} install
       args:
         chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}/build"
+
+    - name: test RDKit
+      ansible.builtin.shell: RDBASE="{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}" "{{ DEPS }}/bin/ctest"
+      args:
+        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}/build"
+
+    - name: copy RDKit libraries
+      ansible.builtin.shell: cp Code/JavaWrappers/gmwrapper/libGraphMolWrap.jnilib Code/JavaWrappers/gmwrapper/org.RDKit*.jar {{ IMAGE }} && \
+        cp Code/JavaWrappers/csharp_wrapper/RDKFuncs.so Code/JavaWrappers/csharp_wrapper/RDKit2DotNet.dll {{ IMAGE }}
+      args:
+        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}"
     when: libGraphMolWrap.stat.exists == false

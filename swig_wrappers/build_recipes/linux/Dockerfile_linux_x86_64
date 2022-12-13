@@ -5,8 +5,8 @@ ARG DEPS="/deps"
 ARG WORK="/work"
 ARG SRC="/src"
 ARG IMAGE="/image"
-ARG RDKIT_RELEASE="2022_09_2"
-ARG RDKIT_CHKSUM="052d9eae42da57d5af91e9d06d3b4de1"
+ARG RDKIT_RELEASE="2022_09_3"
+ARG RDKIT_CHKSUM="1c2df38b2578cebadb64cc76753a6e5c"
 
 FROM centos:7 AS build-stage
 ARG ARCH
@@ -182,9 +182,9 @@ RUN sed -i -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo
     -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(.*\)\()\)|\1\2\3 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a\4|" \
     Code/GraphMol/MolDraw2D/CMakeLists.txt
 RUN sed -i -e "s|if(WIN32)|if(FALSE)|" \
-    -e "s|\(SWIG_LINK_LIBRARIES *( *\)\(GraphMolWrap *\)\(\${RDKit_Wrapper_Libs}\)|\1\2\3 ${DEPS}/lib/libpixman-1.a ${DEPS}/lib/libpng16.a|" \
+    -e "s|SWIG_LINK_LIBRARIES|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n&|" \
     Code/JavaWrappers/gmwrapper/CMakeLists.txt
-RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|\1\2\3 ${DEPS}/lib/libpixman-1.a ${DEPS}/lib/libpng16.a|" \
+RUN sed -i "s|SWIG_LINK_LIBRARIES|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n&|" \
     Code/JavaWrappers/csharp_wrapper/CMakeLists.txt
 
 # Patch for Avalon 2.0.4a
@@ -197,9 +197,6 @@ RUN sed -i -e "s|\(optBuffer\[optString\.size()\)\( - 1\)\(\] = '\\\\n';\)|\1\3|
 # Patch for SWIG loggers
 RUN sed -i "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/gmwrapper/GraphMolJava.i
 RUN sed -i "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/csharp_wrapper/GraphMolCSharp.i
-
-# Patch for 2022.09.2 incorrectly reporting 2022.09.1
-RUN sed -i "s|^\(set(RDKit_Revision \"\)\(1\)\(\")\)|\12\3|" CMakeLists.txt
 
 RUN mkdir build
 WORKDIR ${SRC}/rdkit-Release_${RDKIT_RELEASE}/build
@@ -235,6 +232,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && FREETYPE_DIR=${DEPS} ${DEPS}/bin/cmake \
     -D CMAKE_INSTALL_PREFIX=${IMAGE} \
     ..
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+RUN RDBASE=${SRC}/rdkit-Release_${RDKIT_RELEASE} ${DEPS}/bin/ctest
 
 FROM scratch as export-stage
 ARG ARCH
