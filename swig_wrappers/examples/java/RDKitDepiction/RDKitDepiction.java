@@ -1,6 +1,20 @@
 /*
-CLASSPATH=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/noarch/org.RDKit.jar:. LD_LIBRARY_PATH=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/linux/x86_64 javac RDKitDepiction.java \
-&& CLASSPATH=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/noarch/org.RDKit.jar:. LD_LIBRARY_PATH=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/linux/x86_64 java -Djava.library.path=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/linux/x86_64 RDKitDepiction
+Linux
+-----
+CLASSPATH=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/noarch/org.RDKit.jar:. \
+LD_LIBRARY_PATH=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/linux/x86_64 \
+javac RDKitDepiction.java && \
+CLASSPATH=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/noarch/org.RDKit.jar:. \
+LD_LIBRARY_PATH=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/linux/x86_64 \
+java -Djava.library.path=/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/linux/x86_64 RDKitDepiction
+
+Windows
+-------
+set CLASSPATH=C:\build\src\rdkit-build-helpers\swig_wrappers\artifacts\java\noarch\org.RDKit.jar;. & ^
+javac RDKitDepiction.java & ^
+java -Djava.library.path=C:\build\src\rdkit-build-helpers\swig_wrappers\artifacts\java\windows\x86_64 RDKitDepiction
+
+
 */
 
 import org.RDKit.*;
@@ -12,7 +26,6 @@ import java.io.OutputStream;
 
 class RDKitDepiction {
     public static void main(String args[]) throws IOException {
-        System.setProperty("java.library.path", "/scratch/toscopa1/src/bitbucket/rdkit-build-helpers/swig_wrappers/artifacts/java/linux/x86_64");
         System.loadLibrary("GraphMolWrap");
 
         String drawOptions =
@@ -98,7 +111,7 @@ class RDKitDepiction {
         molDraw.drawMolecule(mol);
         molDraw.finishDrawing();
         byte[] pngBytes = molDraw.toByteArray();
-        File file = new File("/home/toscopa1/temp/image.png");
+        File file = new File("image.png");
         OutputStream os = new FileOutputStream(file);
         os.write(pngBytes);
         os.close();
