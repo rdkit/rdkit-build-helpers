@@ -290,6 +290,12 @@ RUN export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk && \
     -D JAVA_AWT_INCLUDE_PATH="${JAVA_HOME}/include" \
     ..
 RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+# tar up the Windows exe files such that we can run them later
+RUN mkdir windows_ctest_exe
+RUN find . -name '*.exe' | grep -v CMakeFiles | sed "s|^.*$|cp & windows_ctest_exe|" | sh
+RUN cp ../Code/JavaWrappers/gmwrapper/src-test/org/RDKit/*.java windows_ctest_exe
+RUN cp /usr/${ARCH}-w64-mingw32/sys-root/mingw/bin/*.dll windows_ctest_exe
+RUN tar cjf windows_ctest_exe.tar.bz2 windows_ctest_exe
 
 FROM scratch as export-stage
 ARG ARCH
@@ -300,3 +306,4 @@ COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/Code/JavaWrappers/
 COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/Code/JavaWrappers/gmwrapper/GraphMolWrap.dll /${ARCH}/GraphMolWrap.dll
 COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/Code/JavaWrappers/csharp_wrapper/RDKFuncs.dll /${ARCH}/RDKFuncs.dll
 COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/Code/JavaWrappers/csharp_wrapper/RDKit2DotNet.dll /${ARCH}/RDKit2DotNet.dll
+COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/build/windows_ctest_exe.tar.bz2 /${ARCH}/windows_ctest_exe.tar.bz2
