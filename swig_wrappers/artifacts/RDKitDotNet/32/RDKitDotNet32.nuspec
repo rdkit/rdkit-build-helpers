@@ -3,7 +3,7 @@
   <metadata>
     <id>RDKitDotNet32</id>
     <title>RDKitDotNet32</title>
-    <version>2022.09.2</version>
+    <version>2022.09.3</version>
     <authors>Paolo Tosco</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="file">license.txt</license>
@@ -12,7 +12,7 @@
 	    Compiled using gcc, g++, Mono.
       Statically linked against all dependencies.
 	  </description>
-    <releaseNotes>Built from Release 2022_09_2 with ad-hoc Avalon patches.</releaseNotes>
+    <releaseNotes>Built from Release 2022_09_3 with ad-hoc Avalon patches.</releaseNotes>
     <copyright>Copyright (c) 2022 Paolo Tosco</copyright>
     <tags>rdkit linux windows macos</tags>
     <dependencies>
