@@ -597,6 +597,7 @@
       ansible.builtin.shell: sed -i ".orig" "s|/\* \#undef HAVE_UCONTEXT_H \*/|#define HAVE_UCONTEXT_H 1|" config.h && \
         sed -i ".orig" "s|^\(.*\)\(set (CMAKE_SYSTEM_PROCESSOR \)\(\"\${BTLS_ARCH}\")\)|\1\2\3\n\1set (CMAKE_OSX_ARCHITECTURES \3|" mono/btls/CMakeLists.txt && \
         sed -i ".orig" "s|^\( *#ifdef HAVE_UCONTEXT_H *\)$|\1\n#define _XOPEN_SOURCE 600|" mono/utils/mono-sigcontext.h && \
+        sed -i ".orig" "s|^\( *#ifdef HAVE_UCONTEXT_H *\)$|\1\n#define _XOPEN_SOURCE 600|" mono/mini/exceptions-amd64.c && \
         sed -i ".orig" "s|^\( *#ifdef HAVE_UCONTEXT_H *\)$|\1\n#define _XOPEN_SOURCE 600|" mono/mini/exceptions-arm64.c && \
         sed -i ".orig" "s|^\( *#if \!defined(__cplusplus) \&\& \!__OBJC2__ *\)$|\1 \&\& !defined(HAVE_OBJ_SUPER_SUPER_CLASS)|" mono/utils/mono-threads-mach-helper.c
       args:
@@ -711,7 +712,9 @@
         chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}/build"
 
     - name: test RDKit
-      ansible.builtin.shell: RDBASE="{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}" "{{ DEPS }}/bin/ctest"
+      ansible.builtin.shell: export JAVA_ARCH=`echo {{ ARCH }} | sed "s|arm64|aarch64|"` && \
+        export JAVA_HOME="`ls -d /Applications/KNIME_*_${JAVA_ARCH}.app/Contents/Eclipse/plugins/org.knime.binary.jre.macosx.${JAVA_ARCH}_*/jre/Contents/Home`" && \
+        RDBASE="{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}" PATH="$JAVA_HOME/bin:$PATH" "{{ DEPS }}/bin/ctest"
       args:
         chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}/build"
 
