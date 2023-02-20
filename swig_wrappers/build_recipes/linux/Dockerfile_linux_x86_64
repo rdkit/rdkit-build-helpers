@@ -5,8 +5,10 @@ ARG DEPS="/deps"
 ARG WORK="/work"
 ARG SRC="/src"
 ARG IMAGE="/image"
-ARG RDKIT_RELEASE="2022_09_3"
-ARG RDKIT_CHKSUM="1c2df38b2578cebadb64cc76753a6e5c"
+# ARG RDKIT_RELEASE="2022_09_3"
+# ARG RDKIT_CHKSUM="1c2df38b2578cebadb64cc76753a6e5c"
+ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
+ARG RDKIT_BRANCH="master"
 
 FROM centos:7 AS build-stage
 ARG ARCH
@@ -16,6 +18,8 @@ ARG SRC
 ARG IMAGE
 ARG RDKIT_RELEASE
 ARG RDKIT_CHKSUM
+ARG RDKIT_GIT_URL
+ARG RDKIT_BRANCH
 
 USER root
 
@@ -44,7 +48,7 @@ ARG DEVTOOLSET_PATH="/opt/rh/devtoolset-11"
 
 RUN yum update -y
 RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-11 bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel patch
+RUN yum install -y devtoolset-11 bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel patch git
 
 RUN curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo
 RUN yum install -y mono-devel
@@ -171,36 +175,33 @@ RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" CXX="g++ -fPIC" \
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${SRC}
-RUN curl -L -O https://github.com/rdkit/rdkit/archive/refs/tags/Release_${RDKIT_RELEASE}.tar.gz && \
-    [ `md5sum Release_${RDKIT_RELEASE}.tar.gz | awk '{print $1}'` = ${RDKIT_CHKSUM} ] || \
-    ( >&2 echo "Failed to download RDKit" && exit 1 )
-RUN tar xzf Release_${RDKIT_RELEASE}.tar.gz
-WORKDIR ${SRC}/rdkit-Release_${RDKIT_RELEASE}
-RUN sed -i "s|#if _MSC_VER|#ifdef _WIN32|" Code/GraphMol/catch_chirality.cpp
-RUN sed -i "s|Windows\.h|windows.h|" Code/GraphMol/MMPA/MMPA_UnitTest.cpp
+RUN if [ -n "${RDKIT_RELEASE}" ]; then \
+        curl -L -O ${RDKIT_GIT_URL}/archive/refs/tags/Release_${RDKIT_RELEASE}.tar.gz && \
+            [ `md5sum Release_${RDKIT_RELEASE}.tar.gz | awk '{print $1}'` = ${RDKIT_CHKSUM} ] || \
+            ( >&2 echo "Failed to download RDKit" && exit 1 ); \
+        tar xzf Release_${RDKIT_RELEASE}.tar.gz && \
+        ln -s rdkit-Release_${RDKIT_RELEASE} rdkit; \
+    else \
+        git clone ${RDKIT_GIT_URL}.git && cd rdkit && git checkout ${RDKIT_BRANCH}; \
+    fi
+WORKDIR ${SRC}/rdkit
 RUN sed -i -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo\)|\1target_include_directories(MolDraw2D PUBLIC ${DEPS}/include/cairo)\n\1\2 ${DEPS}/lib/libcairo.a ${DEPS}/lib/libpixman-1.a ${DEPS}/lib/libpng16.a|" \
     -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(.*\)\()\)|\1\2\3 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a\4|" \
     Code/GraphMol/MolDraw2D/CMakeLists.txt
+RUN sed -i "s|^\( *set(RDKit_SERIALIZATION_LIBS *\${Boost_SERIALIZATION_LIBRARY}\)\()\)|\1 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a\2|" \
+    Code/GraphMol/ChemReactions/CMakeLists.txt
 RUN sed -i -e "s|if(WIN32)|if(FALSE)|" \
     -e "s|SWIG_LINK_LIBRARIES|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n&|" \
     Code/JavaWrappers/gmwrapper/CMakeLists.txt
 RUN sed -i "s|SWIG_LINK_LIBRARIES|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n&|" \
     Code/JavaWrappers/csharp_wrapper/CMakeLists.txt
 
-# Patch for Avalon 2.0.4a
-RUN sed -i -e "s|set(AVALON_VERSION \"2\.0\.2\")|set(AVALON_VERSION \"2.0.4a\")|" \
-    -e "s|set(AVALONTOOLS_MD5SUM \"fc188383a8896802e948c977b73dbe71\")|set(AVALONTOOLS_MD5SUM \"8e0fdedce0d93bdbc1e3c6ab3ae5c6cf\")|" \
-    -e "s|if(CMAKE_C_COMPILER_ID STREQUAL \"GNU\")|set(reaccsio_c \"\${AVALONTOOLS_DIR}/src/main/C/common/reaccsio.c\")\nfile(READ \${reaccsio_c} reaccsio_c_data)\nif (NOT \"\${reaccsio_c_data}\" MATCHES \"fputc('\\\\\\\\\\\\\\\\0')\")\n    string(REGEX REPLACE \"( *)(int)( *)(Size;)\" \"\\\\\\\\1\\\\\\\\2\\\\\\\\3\\\\\\\\4\\\\\\\\n\\\\\\\\1int\\\\\\\\3Len;\" reaccsio_c_data \"\${reaccsio_c_data}\")\n    string(REGEX REPLACE \"( *)(Size \\\\\\\\+= strlen\\\\\\\\(Line\\\\\\\\);)\" \"\\\\\\\\1Len = strlen(Line);\\\\\\\\n\\\\\\\\1if (!Len) break;\\\\\\\\n\\\\\\\\1Size += Len;\" reaccsio_c_data \"\${reaccsio_c_data}\")\n    string(REGEX REPLACE \"(bufsize = 5\\\\\\\\*80 \\\\\\\\+ mp->n_atoms\\\\\\\\*80 \\\\\\\\+ mp->n_bonds\\\\\\\\*80 \\\\\\\\+ mp->n_props\\\\\\\\*80)(;)\" \"\\\\\\\\1 + 1\\\\\\\\2\" reaccsio_c_data \"\${reaccsio_c_data}\")\n    string(REGEX REPLACE \"( *)(rewind\\\\\\\\(fp\\\\\\\\);)\" \"\\\\\\\\1fputc('\\\\\\\\\\\\\\\\0', fp);\\\\\\\\n\\\\\\\\1fflush(fp);\\\\\\\\n\\\\\\\\1\\\\\\\\2\" reaccsio_c_data \"\${reaccsio_c_data}\")\n    file(WRITE \${reaccsio_c} \"\${reaccsio_c_data}\")\nendif()\n\n&|" \
-    External/AvalonTools/CMakeLists.txt
-RUN sed -i -e "s|\(optBuffer\[optString\.size()\)\( - 1\)\(\] = '\\\\n';\)|\1\3|" \
-    -e "s|\(optBuffer\[optString.size()\)\(\]\)\( = '\\\\0';\)|\1 + 1\2\3|" External/AvalonTools/AvalonTools.cpp
-
 # Patch for SWIG loggers
 RUN sed -i "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/gmwrapper/GraphMolJava.i
 RUN sed -i "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/csharp_wrapper/GraphMolCSharp.i
 
 RUN mkdir build
-WORKDIR ${SRC}/rdkit-Release_${RDKIT_RELEASE}/build
+WORKDIR ${SRC}/rdkit/build
 RUN source ${DEVTOOLSET_PATH}/enable && FREETYPE_DIR=${DEPS} ${DEPS}/bin/cmake \
     -D RDK_BUILD_INCHI_SUPPORT=ON \
     -D RDK_BUILD_AVALON_SUPPORT=ON \
@@ -233,14 +234,14 @@ RUN source ${DEVTOOLSET_PATH}/enable && FREETYPE_DIR=${DEPS} ${DEPS}/bin/cmake \
     -D CMAKE_INSTALL_PREFIX=${IMAGE} \
     ..
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
-RUN RDBASE=${SRC}/rdkit-Release_${RDKIT_RELEASE} ${DEPS}/bin/ctest
+RUN RDBASE=${SRC}/rdkit ${DEPS}/bin/ctest
 
 FROM scratch as export-stage
 ARG ARCH
 ARG SRC
 ARG RDKIT_RELEASE
-COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/Code/JavaWrappers/gmwrapper/org.RDKit.jar /${ARCH}/org.RDKit.jar
-COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/Code/JavaWrappers/gmwrapper/org.RDKitDoc.jar /${ARCH}/org.RDKitDoc.jar
-COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/Code/JavaWrappers/gmwrapper/libGraphMolWrap.so /${ARCH}/libGraphMolWrap.so
-COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/Code/JavaWrappers/csharp_wrapper/RDKFuncs.so /${ARCH}/RDKFuncs.so
-COPY --from=build-stage ${SRC}/rdkit-Release_${RDKIT_RELEASE}/Code/JavaWrappers/csharp_wrapper/RDKit2DotNet.dll /${ARCH}/RDKit2DotNet.dll
+COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKit.jar /${ARCH}/org.RDKit.jar
+COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKitDoc.jar /${ARCH}/org.RDKitDoc.jar
+COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/libGraphMolWrap.so /${ARCH}/libGraphMolWrap.so
+COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/csharp_wrapper/RDKFuncs.so /${ARCH}/RDKFuncs.so
+COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/csharp_wrapper/RDKit2DotNet.dll /${ARCH}/RDKit2DotNet.dll

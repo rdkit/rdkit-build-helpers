@@ -11,6 +11,8 @@
     BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
     RDKIT_RELEASE: "2022_09_3"
     RDKIT_CHKSUM: "1c2df38b2578cebadb64cc76753a6e5c"
+    RDKIT_GIT_URL: "https://github.com/rdkit/rdkit"
+    RDKIT_BRANCH: "master"
     PKGCONFIG_VERSION: "0.29.2"
     PKGCONFIG_CHECKSUM: "76e501663b29cb7580245720edfb6106164fad2b"
     ZLIB_VERSION: "1.2.13"
@@ -618,27 +620,30 @@
   - name: install RDKit
     block:
     - name: download RDKit
-      ansible.builtin.shell: if [ ! -e "Release_{{ RDKIT_RELEASE }}.tar.gz" ] || \
-          [ `md5 -q "Release_{{ RDKIT_RELEASE }}.tar.gz"` != {{ RDKIT_CHKSUM }} ]; then \
-          rm -f "Release_{{ RDKIT_RELEASE }}.tar.gz"; \
-          curl -L -O "https://github.com/rdkit/rdkit/archive/refs/tags/Release_{{ RDKIT_RELEASE }}.tar.gz" && \
-            [ `md5 -q "Release_{{ RDKIT_RELEASE }}.tar.gz"` = {{ RDKIT_CHKSUM }} ] || \
-            ( >&2 echo "Failed to download RDKit" && exit 1 ); \
+      ansible.builtin.shell: if [ -n "${RDKIT_RELEASE}" ]; then \
+          if [ ! -e "Release_{{ RDKIT_RELEASE }}.tar.gz" ] || \
+            [ `md5 -q "Release_{{ RDKIT_RELEASE }}.tar.gz"` != {{ RDKIT_CHKSUM }} ]; then \
+            rm -f "Release_{{ RDKIT_RELEASE }}.tar.gz"; \
+            curl -L -O "{{ RDKIT_GIT_URL }}/archive/refs/tags/Release_{{ RDKIT_RELEASE }}.tar.gz" && \
+              [ `md5 -q "Release_{{ RDKIT_RELEASE }}.tar.gz"` = {{ RDKIT_CHKSUM }} ] || \
+              ( >&2 echo "Failed to download RDKit" && exit 1 ); \
+          fi \
+          tar xzf "Release_{{ RDKIT_RELEASE }}.tar.gz" && \
+          rm -f rdkit && \
+          ln -s rdkit-Release_${RDKIT_RELEASE} rdkit; \
+        else \
+          git clone "{{ RDKIT_GIT_URL }}.git" && cd rdkit && git checkout "{{ RDKIT_BRANCH }}"; \
         fi
       args:
         chdir: "{{ SRC }}"
 
-    - name: untar RDKit
-      ansible.builtin.shell: tar xzf "Release_{{ RDKIT_RELEASE }}.tar.gz"
-      args:
-        chdir: "{{ SRC }}"
-
     - name: patch RDKit
-      ansible.builtin.shell: sed -i ".orig" "s|#if _MSC_VER|#ifdef _WIN32|" Code/GraphMol/catch_chirality.cpp && \
-        sed -i ".orig" "s|Windows\.h|windows.h|" Code/GraphMol/MMPA/MMPA_UnitTest.cpp && \
-        sed -i ".orig" -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo\)|\1target_include_directories(MolDraw2D PUBLIC {{ DEPS }}/include/cairo)\n\1\2 {{ DEPS }}/lib/libcairo.a {{ DEPS }}/lib/libpixman-1.a {{ DEPS }}/lib/libpng16.a \"-framework CoreFoundation\" \"-framework CoreGraphics\"|" \
+      ansible.builtin.shell: sed -i ".orig" \
+          -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo\)|\1target_include_directories(MolDraw2D PUBLIC {{ DEPS }}/include/cairo)\n\1\2 {{ DEPS }}/lib/libcairo.a {{ DEPS }}/lib/libpixman-1.a {{ DEPS }}/lib/libpng16.a \"-framework CoreFoundation\" \"-framework CoreGraphics\"|" \
           -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(.*\)\()\)|\1\2\3 {{ DEPS }}/lib/libz.a {{ DEPS }}/lib/libbz2.a\4|" \
           Code/GraphMol/MolDraw2D/CMakeLists.txt && \
+        sed -i ".orig" "s|^\( *set(RDKit_SERIALIZATION_LIBS *\${Boost_SERIALIZATION_LIBRARY}\)\()\)|\1 {{ DEPS }}/lib/libz.a {{ DEPS }}/lib/libbz2.a\2|" \
+            Code/GraphMol/ChemReactions/CMakeLists.txt && \
         sed -i ".orig" -e "s|if(WIN32)|if(FALSE)|" \
           -e "s|\(SWIG_LINK_LIBRARIES *( *\)\(GraphMolWrap *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,-undefined,error;\${RDKit_Wrapper_Libs};{{ DEPS }}/lib/libcairo.a;{{ DEPS }}/lib/libpixman-1.a;{{ DEPS }}/lib/libpng16.a;{{ DEPS }}/lib/libz.a;{{ DEPS }}/lib/libbz2.a\")\n\1\2\3 \"-framework CoreFoundation\" \"-framework CoreGraphics\"|" \
           Code/JavaWrappers/gmwrapper/CMakeLists.txt && \
@@ -647,22 +652,12 @@
         sed -i ".orig" "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/gmwrapper/GraphMolJava.i && \
         sed -i ".orig" "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/csharp_wrapper/GraphMolCSharp.i
       args:
-        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}"
-
-    - name: update Avalon to 2.0.4a
-      ansible.builtin.shell: sed -i ".orig" -e "s|set(AVALON_VERSION \"2\.0\.2\")|set(AVALON_VERSION \"2.0.4a\")|" \
-        -e "s|set(AVALONTOOLS_MD5SUM \"fc188383a8896802e948c977b73dbe71\")|set(AVALONTOOLS_MD5SUM \"8e0fdedce0d93bdbc1e3c6ab3ae5c6cf\")|" \
-        -e "s|if(CMAKE_C_COMPILER_ID STREQUAL \"GNU\")|set(reaccsio_c \"\${AVALONTOOLS_DIR}/src/main/C/common/reaccsio.c\")\nfile(READ \${reaccsio_c} reaccsio_c_data)\nif (NOT \"\${reaccsio_c_data}\" MATCHES \"fputc('\\\\\\\\\\\\\\\\0')\")\n    string(REGEX REPLACE \"( *)(int)( *)(Size;)\" \"\\\\\\\\1\\\\\\\\2\\\\\\\\3\\\\\\\\4\\\\\\\\n\\\\\\\\1int\\\\\\\\3Len;\" reaccsio_c_data \"\${reaccsio_c_data}\")\n    string(REGEX REPLACE \"( *)(Size \\\\\\\\+= strlen\\\\\\\\(Line\\\\\\\\);)\" \"\\\\\\\\1Len = strlen(Line);\\\\\\\\n\\\\\\\\1if (!Len) break;\\\\\\\\n\\\\\\\\1Size += Len;\" reaccsio_c_data \"\${reaccsio_c_data}\")\n    string(REGEX REPLACE \"(bufsize = 5\\\\\\\\*80 \\\\\\\\+ mp->n_atoms\\\\\\\\*80 \\\\\\\\+ mp->n_bonds\\\\\\\\*80 \\\\\\\\+ mp->n_props\\\\\\\\*80)(;)\" \"\\\\\\\\1 + 1\\\\\\\\2\" reaccsio_c_data \"\${reaccsio_c_data}\")\n    string(REGEX REPLACE \"( *)(rewind\\\\\\\\(fp\\\\\\\\);)\" \"\\\\\\\\1fputc('\\\\\\\\\\\\\\\\0', fp);\\\\\\\\n\\\\\\\\1fflush(fp);\\\\\\\\n\\\\\\\\1\\\\\\\\2\" reaccsio_c_data \"\${reaccsio_c_data}\")\n    file(WRITE \${reaccsio_c} \"\${reaccsio_c_data}\")\nendif()\n\n&|" \
-        External/AvalonTools/CMakeLists.txt && \
-        sed -i ".orig" -e "s|\(optBuffer\[optString\.size()\)\( - 1\)\(\] = '\\\\n';\)|\1\3|" \
-        -e "s|\(optBuffer\[optString.size()\)\(\]\)\( = '\\\\0';\)|\1 + 1\2\3|" External/AvalonTools/AvalonTools.cpp
-      args:
-        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}"
+        chdir: "{{ SRC }}/rdkit"
 
     - name: create build sub-directory
       ansible.builtin.shell: mkdir -p build
       args:
-        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}"
+        chdir: "{{ SRC }}/rdkit"
 
     - name: configure RDKit
       ansible.builtin.shell: rm -f CMakeCache.txt && \
@@ -703,24 +698,24 @@
           -D CMAKE_OSX_ARCHITECTURES="{{ ARCH }}" \
           ..
       args:
-        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}/build"
+        chdir: "{{ SRC }}/rdkit/build"
 
     - name: build RDKit
       ansible.builtin.shell: make -j{{ BUILD_CONCURRENCY }} clean && \
         make -j{{ BUILD_CONCURRENCY }} && make -j{{ BUILD_CONCURRENCY }} install
       args:
-        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}/build"
+        chdir: "{{ SRC }}/rdkit/build"
 
     - name: test RDKit
       ansible.builtin.shell: export JAVA_ARCH=`echo {{ ARCH }} | sed "s|arm64|aarch64|"` && \
         export JAVA_HOME="`ls -d /Applications/KNIME_*_${JAVA_ARCH}.app/Contents/Eclipse/plugins/org.knime.binary.jre.macosx.${JAVA_ARCH}_*/jre/Contents/Home`" && \
-        RDBASE="{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}" PATH="$JAVA_HOME/bin:$PATH" "{{ DEPS }}/bin/ctest"
+        RDBASE="{{ SRC }}/rdkit" PATH="$JAVA_HOME/bin:$PATH" "{{ DEPS }}/bin/ctest"
       args:
-        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}/build"
+        chdir: "{{ SRC }}/rdkit/build"
 
     - name: copy RDKit libraries
       ansible.builtin.shell: cp Code/JavaWrappers/gmwrapper/libGraphMolWrap.jnilib Code/JavaWrappers/gmwrapper/org.RDKit*.jar {{ IMAGE }} && \
         cp Code/JavaWrappers/csharp_wrapper/RDKFuncs.so Code/JavaWrappers/csharp_wrapper/RDKit2DotNet.dll {{ IMAGE }}
       args:
-        chdir: "{{ SRC }}/rdkit-Release_{{ RDKIT_RELEASE }}"
+        chdir: "{{ SRC }}/rdkit"
     when: libGraphMolWrap.stat.exists == false
