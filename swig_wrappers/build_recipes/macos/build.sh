@@ -28,7 +28,7 @@ ARCH=`basename $PWD`
 [ "$1" = "--clean" ] && ( ls -l && ls -ld ../noarch ) | grep ^d | awk "{print \"rm -rf \"\$NF}" 1>&2 | sh
 ! which python3 > /dev/null && no_python3
 
-[ ! -e ../noarch/rdkit_knime/bin/activate ] && python3 -m venv ../noarch/rdkit_knime
-. ../noarch/rdkit_knime/bin/activate
+[ ! -e ../noarch/swig/bin/activate ] && python3 -m venv ../noarch/swig
+. ../noarch/swig/bin/activate
 ! which ansible-playbook > /dev/null && pip install ansible
 ansible-playbook --connection=local --limit 127.0.0.1 --extra-vars "ARCH=$ARCH" ../Ansible_playbook_macOS.yml

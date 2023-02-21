@@ -620,17 +620,17 @@
   - name: install RDKit
     block:
     - name: download RDKit
-      ansible.builtin.shell: if [ -n "${RDKIT_RELEASE}" ]; then \
+      ansible.builtin.shell: if [ -n "{{ RDKIT_RELEASE }}" ]; then \
           if [ ! -e "Release_{{ RDKIT_RELEASE }}.tar.gz" ] || \
             [ `md5 -q "Release_{{ RDKIT_RELEASE }}.tar.gz"` != {{ RDKIT_CHKSUM }} ]; then \
             rm -f "Release_{{ RDKIT_RELEASE }}.tar.gz"; \
             curl -L -O "{{ RDKIT_GIT_URL }}/archive/refs/tags/Release_{{ RDKIT_RELEASE }}.tar.gz" && \
               [ `md5 -q "Release_{{ RDKIT_RELEASE }}.tar.gz"` = {{ RDKIT_CHKSUM }} ] || \
               ( >&2 echo "Failed to download RDKit" && exit 1 ); \
-          fi \
+          fi; \
           tar xzf "Release_{{ RDKIT_RELEASE }}.tar.gz" && \
           rm -f rdkit && \
-          ln -s rdkit-Release_${RDKIT_RELEASE} rdkit; \
+          ln -s rdkit-Release_{{ RDKIT_RELEASE }} rdkit; \
         else \
           git clone "{{ RDKIT_GIT_URL }}.git" && cd rdkit && git checkout "{{ RDKIT_BRANCH }}"; \
         fi
