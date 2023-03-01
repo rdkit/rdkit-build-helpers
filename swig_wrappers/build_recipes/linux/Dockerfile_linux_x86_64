@@ -191,9 +191,9 @@ RUN sed -i -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo
 RUN sed -i "s|^\( *set(RDKit_SERIALIZATION_LIBS *\${Boost_SERIALIZATION_LIBRARY}\)\()\)|\1 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a\2|" \
     Code/GraphMol/ChemReactions/CMakeLists.txt
 RUN sed -i -e "s|if(WIN32)|if(FALSE)|" \
-    -e "s|SWIG_LINK_LIBRARIES|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n&|" \
+    -e "s|\(SWIG_LINK_LIBRARIES *( *\)\(GraphMolWrap *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n\1\2-static-libgcc -static-libstdc++ \3|" \
     Code/JavaWrappers/gmwrapper/CMakeLists.txt
-RUN sed -i "s|SWIG_LINK_LIBRARIES|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n&|" \
+RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n\1\2-static-libgcc -static-libstdc++ \3|" \
     Code/JavaWrappers/csharp_wrapper/CMakeLists.txt
 
 # Patch for SWIG loggers
