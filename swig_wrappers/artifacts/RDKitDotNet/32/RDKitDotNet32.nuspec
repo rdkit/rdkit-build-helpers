@@ -3,7 +3,7 @@
   <metadata>
     <id>RDKitDotNet32</id>
     <title>RDKitDotNet32</title>
-    <version>2023.03.1-pre20230220</version>
+    <version>2023.03.1-pre20230301</version>
     <authors>Paolo Tosco</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="file">license.txt</license>
@@ -12,7 +12,7 @@
 	    Compiled using gcc, g++, Mono.
       Statically linked against all dependencies.
 	  </description>
-    <releaseNotes>Built from master branch on 2023-02-20.</releaseNotes>
+    <releaseNotes>Built from master branch on 2023-03-01.</releaseNotes>
     <copyright>Copyright (c) 2023 Novartis Institutes for BioMedical Research</copyright>
     <tags>rdkit linux windows macos</tags>
     <dependencies>

@@ -35,7 +35,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="RDKit2DotNet, Version=0.0.0.0, Culture=neutral, processorArchitecture=x86">
-      <HintPath>..\packages\RDKitDotNet32.2022.9.2\lib\net40\RDKit2DotNet.dll</HintPath>
+      <HintPath>..\packages\RDKitDotNet32.2023.3.1-pre20230301\lib\net40\RDKit2DotNet.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
