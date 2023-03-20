@@ -34,7 +34,7 @@
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="RDKit2DotNet, Version=0.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+    <Reference Include="RDKit2DotNet, Version=2023.3.0.1, Culture=neutral, PublicKeyToken=bd7898a04a351f41, processorArchitecture=MSIL">
       <HintPath>..\packages\RDKitDotNet.2023.3.1-pre20230301\lib\net40\RDKit2DotNet.dll</HintPath>
     </Reference>
     <Reference Include="System" />
