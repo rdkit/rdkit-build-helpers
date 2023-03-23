@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>RDKitDotNet</id>
+    <title>RDKitDotNet</title>
+    <version>2023.03.1-pre20230301</version>
+    <authors>Paolo Tosco</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="file">license.txt</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <description>RDKit C# bindings for Linux (x64), Windows (x64, x86), macOS (x64, arm64).
+	    Compiled using gcc, g++, Mono.
+      Statically linked against all dependencies.
+	  </description>
+    <releaseNotes>Built from master branch on 2023-03-01.</releaseNotes>
+    <copyright>Copyright (c) 2023 Novartis Institutes for BioMedical Research</copyright>
+    <tags>rdkit linux windows macos</tags>
+    <dependencies>
+      <group targetFramework="net40" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src=".\license.txt" target="." />
+    <file src="lib\net40\_._" target="lib\net40" />
+    <file src="build\net40\RDKitDotNet.targets" target="build\net40" />
+    <file src="build\net40\RDKitDotNet.props" target="build\net40" />
+    <file src="runtimes\linux-x64\native\RDKFuncs.so" target="runtimes\linux-x64\native" />
+    <file src="runtimes\osx-x64\native\RDKFuncs.dylib" target="runtimes\osx-x64\native" />
+    <file src="runtimes\osx-arm64\native\RDKFuncs.dylib" target="runtimes\osx-arm64\native" />
+    <file src="runtimes\win10-x64\native\RDKFuncs.dll" target="runtimes\win10-x64\native" />
+    <file src="runtimes\win10-x86\native\RDKFuncs.dll" target="runtimes\win10-x86\native" />
+    <file src="runtimes\lib-arm64\net40\RDKit2DotNet.dll" target="runtimes\lib-arm64\net40" />
+    <file src="runtimes\lib-x64\net40\RDKit2DotNet.dll" target="runtimes\lib-x64\net40" />
+    <file src="runtimes\lib-x86\net40\RDKit2DotNet.dll" target="runtimes\lib-x86\net40" />
+  </files>
+</package>

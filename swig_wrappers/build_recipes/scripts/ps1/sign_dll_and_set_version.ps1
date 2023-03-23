@@ -21,14 +21,16 @@ $dllBaseName = [System.IO.Path]::GetFileNameWithoutExtension($dllPathInfo)
 $snkAbsPath = (Resolve-Path $snk).ToString()
 $versionColonSeparated = $version -replace "\.", ":"
 $arch = [System.Reflection.AssemblyName]::GetAssemblyName("${dllDir}\${dllBaseName}.dll").ProcessorArchitecture.ToString().ToLower()
-$bits = 64
+$ilasmFlags = "/PE64 /X64"
 if ($arch -Eq "x86") {
-    $bits = "32"
+    $ilasmFlags = "/32BITPREFERRED"
+} elseif ($arch -Eq "arm64") {
+    $ilasmFlags = "/PE64 /ARM"
 }
 
 Push-Location $dllDir
 Start-Process -Wait -FilePath cmd -ArgumentList "/c",
-    "call `"${Env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars${bits}.bat`" & cd $dllDir & ildasm ${dllBaseName}.dll /out:${dllBaseName}.il"
+    "call `"${Env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat`" & cd $dllDir & ildasm ${dllBaseName}.dll /out:${dllBaseName}.il"
 
 if (-Not (Test-Path "${dllBaseName}.dll.orig")) {
     Rename-Item "${dllBaseName}.dll" "${dllBaseName}.dll.orig"
@@ -36,4 +38,5 @@ if (-Not (Test-Path "${dllBaseName}.dll.orig")) {
 $ilContent = Get-Content -Raw "${dllBaseName}.il"
 $ilContent -replace "^([\s\S]+\.assembly\s+RDKit2DotNet\s+{[\s\S]+\.ver\s+)(\S+)(\s+[\s\S]+)$", "`${1}${versionColonSeparated}`${3}" | Set-Content "${dllBaseName}.il"
 Start-Process -Wait -FilePath cmd -ArgumentList "/c",
-    "call `"${Env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars${bits}.bat`" & cd $dllDir & ilasm ${dllBaseName}.il /dll /key:${snkAbsPath}"
+    "call `"${Env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat`" & cd $dllDir & ilasm ${dllBaseName}.il $ilasmFlags /dll /key:${snkAbsPath}"
+Pop-Location $dllDir
