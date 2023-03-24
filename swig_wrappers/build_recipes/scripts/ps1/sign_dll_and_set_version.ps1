@@ -39,4 +39,4 @@ $ilContent = Get-Content -Raw "${dllBaseName}.il"
 $ilContent -replace "^([\s\S]+\.assembly\s+RDKit2DotNet\s+{[\s\S]+\.ver\s+)(\S+)(\s+[\s\S]+)$", "`${1}${versionColonSeparated}`${3}" | Set-Content "${dllBaseName}.il"
 Start-Process -Wait -FilePath cmd -ArgumentList "/c",
     "call `"${Env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat`" & cd $dllDir & ilasm ${dllBaseName}.il $ilasmFlags /dll /key:${snkAbsPath}"
-Pop-Location $dllDir
+Pop-Location
