@@ -25,7 +25,7 @@ $ilasmFlags = "/PE64 /X64"
 if ($arch -Eq "x86") {
     $ilasmFlags = "/32BITPREFERRED"
 } elseif ($arch -Eq "arm64") {
-    $ilasmFlags = "/PE64 /ARM"
+    throw("arm64 is not supported by Visual Studio on Intel Windows")
 }
 
 Push-Location $dllDir
