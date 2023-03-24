@@ -8,8 +8,9 @@
   vars:
     BUILD_CONCURRENCY: 6
     MIN_MACOS_VERSION: "10.13"
-    # BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
+    BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
     # RDKIT_RELEASE: "2022_09_3"
+    RDKIT_RELEASE: ""
     RDKIT_CHKSUM: "1c2df38b2578cebadb64cc76753a6e5c"
     RDKIT_GIT_URL: "https://github.com/rdkit/rdkit"
     RDKIT_BRANCH: "master"
