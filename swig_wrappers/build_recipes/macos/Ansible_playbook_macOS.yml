@@ -633,7 +633,7 @@
           rm -f rdkit && \
           ln -s rdkit-Release_{{ RDKIT_RELEASE }} rdkit; \
         else \
-          git clone "{{ RDKIT_GIT_URL }}.git" && cd rdkit && git checkout "{{ RDKIT_BRANCH }} && git checkout f492e294307a23012bba49375753dbbaf0951ea4 && git checkout -b master-commit-f492e294307a23012bba49375753dbbaf0951ea4"; \
+          git clone "{{ RDKIT_GIT_URL }}.git" && cd rdkit && git checkout {{ RDKIT_BRANCH }} && git checkout f492e294307a23012bba49375753dbbaf0951ea4 && git checkout -b master-commit-f492e294307a23012bba49375753dbbaf0951ea4; \
         fi
       args:
         chdir: "{{ SRC }}"
