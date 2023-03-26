@@ -9,9 +9,9 @@
     BUILD_CONCURRENCY: 6
     MIN_MACOS_VERSION: "10.13"
     BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
-    # RDKIT_RELEASE: "2022_09_3"
-    RDKIT_RELEASE: ""
-    RDKIT_CHKSUM: "1c2df38b2578cebadb64cc76753a6e5c"
+    RDKIT_RELEASE: "2022_09_5"
+    # RDKIT_RELEASE: ""
+    RDKIT_CHKSUM: "158a3eef0c6ccd389a49a5a0eb383a1d"
     RDKIT_GIT_URL: "https://github.com/rdkit/rdkit"
     RDKIT_BRANCH: "master"
     PKGCONFIG_VERSION: "0.29.2"
@@ -633,7 +633,7 @@
           rm -f rdkit && \
           ln -s rdkit-Release_{{ RDKIT_RELEASE }} rdkit; \
         else \
-          git clone "{{ RDKIT_GIT_URL }}.git" && cd rdkit && git checkout {{ RDKIT_BRANCH }} && git checkout f492e294307a23012bba49375753dbbaf0951ea4 && git checkout -b master-commit-f492e294307a23012bba49375753dbbaf0951ea4; \
+          git clone "{{ RDKIT_GIT_URL }}.git" && cd rdkit && git checkout {{ RDKIT_BRANCH }}; \
         fi
       args:
         chdir: "{{ SRC }}"
