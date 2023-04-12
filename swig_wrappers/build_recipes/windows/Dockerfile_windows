@@ -6,10 +6,10 @@ ARG DEPS="/deps"
 ARG WORK="/work"
 ARG SRC="/src"
 ARG IMAGE="/image"
-ARG RDKIT_RELEASE="2022_09_5"
-ARG RDKIT_CHKSUM="158a3eef0c6ccd389a49a5a0eb383a1d"
-ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
-ARG RDKIT_BRANCH="master"
+#ARG RDKIT_RELEASE="2022_09_5"
+#ARG RDKIT_CHKSUM="158a3eef0c6ccd389a49a5a0eb383a1d"
+ARG RDKIT_GIT_URL="https://github.com/ptosco/rdkit"
+ARG RDKIT_BRANCH="minimallib"
 
 FROM fedora:36 AS build-stage-prep
 ARG ARCH

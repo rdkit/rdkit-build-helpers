@@ -27,8 +27,8 @@
     <file src="runtimes\linux-x64\native\RDKFuncs.so" target="runtimes\linux-x64\native" />
     <file src="runtimes\osx-x64\native\RDKFuncs.dylib" target="runtimes\osx-x64\native" />
     <file src="runtimes\osx-arm64\native\RDKFuncs.dylib" target="runtimes\osx-arm64\native" />
-    <file src="runtimes\win10-x64\native\RDKFuncs.dll" target="runtimes\win10-x64\native" />
-    <file src="runtimes\win10-x86\native\RDKFuncs.dll" target="runtimes\win10-x86\native" />
+    <file src="runtimes\win-x64\native\RDKFuncs.dll" target="runtimes\win-x64\native" />
+    <file src="runtimes\win-x86\native\RDKFuncs.dll" target="runtimes\win-x86\native" />
     <file src="runtimes\lib-arm64\net40\RDKit2DotNet.dll" target="runtimes\lib-arm64\net40" />
     <file src="runtimes\lib-x64\net40\RDKit2DotNet.dll" target="runtimes\lib-x64\net40" />
     <file src="runtimes\lib-x86\net40\RDKit2DotNet.dll" target="runtimes\lib-x86\net40" />
