@@ -10,7 +10,7 @@ ARG IMAGE="/image"
 ARG RDKIT_GIT_URL="https://github.com/ptosco/rdkit"
 ARG RDKIT_BRANCH="minimallib"
 
-FROM centos:7 AS build-stage
+FROM centos:6 AS build-stage
 ARG ARCH
 ARG DEPS
 ARG WORK
@@ -44,14 +44,78 @@ ARG PIXMAN_VERSION="0.42.0"
 ARG PIXMAN_CHKSUM="d925aa9e9ed9d419b6c2e02a61a11d29"
 ARG CAIRO_VERSION="1.16.0"
 ARG CAIRO_CHKSUM="f19e0353828269c22bd72e271243a552"
-ARG DEVTOOLSET_PATH="/opt/rh/devtoolset-11"
+ARG DEVTOOLSET_VERSION=9
+ARG DEVTOOLSET_PATH="/opt/rh/devtoolset-${DEVTOOLSET_VERSION}"
+ARG CENTOS6_LATEST_RELEASE="6.10"
 
+RUN echo -n -e \
+"[base]\n"\
+"name=CentOS-${CENTOS6_LATEST_RELEASE} - Base\n"\
+"baseurl=https://vault.centos.org/${CENTOS6_LATEST_RELEASE}/os/\$basearch/\n"\
+"gpgcheck=1\n"\
+"gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6\n"\
+"enabled=1\n"\
+"metadata_expire=never\n"\
+"\n"\
+"[updates]\n"\
+"name=CentOS-${CENTOS6_LATEST_RELEASE} - Updates\n"\
+"baseurl=https://vault.centos.org/${CENTOS6_LATEST_RELEASE}/updates/\$basearch/\n"\
+"gpgcheck=1\n"\
+"gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6\n"\
+"enabled=1\n"\
+"metadata_expire=never\n"\
+"\n"\
+"[extras]\n"\
+"name=CentOS-${CENTOS6_LATEST_RELEASE} - Extras\n"\
+"baseurl=https://vault.centos.org/${CENTOS6_LATEST_RELEASE}/extras/\$basearch/\n"\
+"gpgcheck=1\n"\
+"gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6\n"\
+"enabled=1\n"\
+"metadata_expire=never\n"\
+"\n"\
+"[contrib]\n"\
+"name=CentOS-${CENTOS6_LATEST_RELEASE} - Contrib\n"\
+"baseurl=https://vault.centos.org/${CENTOS6_LATEST_RELEASE}/contrib/\$basearch/\n"\
+"gpgcheck=1\n"\
+"gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6\n"\
+"enabled=0\n"\
+"metadata_expire=never\n"\
+"\n"\
+"[centosplus]\n"\
+"name=CentOS-${CENTOS6_LATEST_RELEASE} - CentOSPlus\n"\
+"baseurl=https://vault.centos.org/${CENTOS6_LATEST_RELEASE}/centosplus/\$basearch/\n"\
+"gpgcheck=1\n"\
+"gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6\n"\
+"enabled=0\n"\
+"metadata_expire=never\n"\
+"\n"\
+"[centos-sclo-rh]\n"\
+"name=CentOS-${CENTOS6_LATEST_RELEASE} - scl-rh\n"\
+"baseurl=https://vault.centos.org/${CENTOS6_LATEST_RELEASE}/sclo/\$basearch/rh\n"\
+"gpgcheck=1\n"\
+"gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo\n"\
+"enabled=1\n"\
+"metadata_expire=never\n"\
+"\n"\
+"[centos-sclo-sclo]\n"\
+"name=CentOS-${CENTOS6_LATEST_RELEASE} - scl\n"\
+"baseurl=https://vault.centos.org/${CENTOS6_LATEST_RELEASE}/sclo/\$basearch/sclo\n"\
+"gpgcheck=1\n"\
+"gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo\n"\
+"enabled=1\n"\
+"metadata_expire=never\n" > /etc/yum.repos.d/CentOS-Base.repo
+
+RUN echo sslverify=false >> /etc/yum.conf
+
+RUN yum clean all && yum makecache
 RUN yum update -y
 RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-11 bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel patch git
+RUN yum install -y devtoolset-${DEVTOOLSET_VERSION} bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel patch git pcre-devel
 
-RUN curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo
+RUN curl -k https://download.mono-project.com/repo/centos6-stable.repo | tee /etc/yum.repos.d/mono-centos6-stable.repo
 RUN yum install -y mono-devel
+RUN curl -k -L https://www.rpmfind.net/linux/dag/redhat/el6/en/x86_64/dag/RPMS/lzma-4.32.7-1.el6.rf.x86_64.rpm -o /tmp/lzma-4.32.7-1.el6.rf.x86_64.rpm
+RUN yum install -y /tmp/lzma-4.32.7-1.el6.rf.x86_64.rpm
 
 RUN groupadd -g 1005 docker && \
     useradd -u 1005500 -s /bin/bash -g docker docker && \
@@ -62,7 +126,7 @@ USER docker
 RUN mkdir -p ${WORK}/boost ${WORK}/cmake ${WORK}/eigen ${WORK}/zlib ${WORK}/bzip2 ${WORK}/freetype ${WORK}/swig ${WORK}/cairo
 
 WORKDIR ${WORK}/zlib
-RUN curl -L -O https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz && \
+RUN curl -k -L -O https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz && \
     [ `md5sum zlib-${ZLIB_VERSION}.tar.gz | awk '{print $1}'` = ${ZLIB_CHKSUM} ] || \
     ( >&2 echo "Failed to download zlib" && exit 1 )
 RUN tar xzf zlib-${ZLIB_VERSION}.tar.gz
@@ -71,7 +135,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" ./configure --static --64
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/bzip2
-RUN curl -L -O https://sourceware.org/pub/bzip2/bzip2-${BZIP2_VERSION}.tar.gz && \
+RUN curl -k -L -O https://sourceware.org/pub/bzip2/bzip2-${BZIP2_VERSION}.tar.gz && \
     [ `md5sum bzip2-${BZIP2_VERSION}.tar.gz | awk '{print $1}'` = ${BZIP2_CHKSUM} ] || \
     ( >&2 echo "Failed to download bzip2" && exit 1 )
 RUN tar xzf bzip2-${BZIP2_VERSION}.tar.gz
@@ -80,7 +144,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && make CC="gcc -fPIC" PREFIX=${DEPS} -j${B
 RUN source ${DEVTOOLSET_PATH}/enable && make CC="gcc -fPIC" PREFIX=${DEPS} -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/boost
-RUN curl -L -O https://boostorg.jfrog.io/artifactory/main/release/`echo ${BOOST_VERSION} | sed "s|_|.|g"`/source/boost_${BOOST_VERSION}.tar.bz2 && \
+RUN curl -k -L -O https://boostorg.jfrog.io/artifactory/main/release/`echo ${BOOST_VERSION} | sed "s|_|.|g"`/source/boost_${BOOST_VERSION}.tar.bz2 && \
     [ `md5sum boost_${BOOST_VERSION}.tar.bz2 | awk '{print $1}'` = ${BOOST_CHKSUM} ] || \
     ( >&2 echo "Failed to download boost" && exit 1 )
 RUN tar xjf boost_${BOOST_VERSION}.tar.bz2
@@ -94,7 +158,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && \
         cp -R stage/lib ${DEPS} && cp -R boost ${DEPS}/include
 
 WORKDIR ${WORK}/cmake
-RUN curl -L -O https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
+RUN curl -k -L -O https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
     [ `md5sum cmake-${CMAKE_VERSION}.tar.gz | awk '{print $1}'` = ${CMAKE_CHKSUM} ] || \
     ( >&2 echo "Failed to download cmake" && exit 1 )
 RUN tar xzf cmake-${CMAKE_VERSION}.tar.gz
@@ -103,7 +167,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && ./bootstrap --prefix=${DEPS} --parallel=
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/eigen
-RUN curl -L -o eigen-${EIGEN_VERSION}.tar.bz2 https://gitlab.com/libeigen/eigen/-/archive/${EIGEN_VERSION}/eigen-${EIGEN_VERSION}.tar.bz2 && \
+RUN curl -k -L -o eigen-${EIGEN_VERSION}.tar.bz2 https://gitlab.com/libeigen/eigen/-/archive/${EIGEN_VERSION}/eigen-${EIGEN_VERSION}.tar.bz2 && \
     [ `md5sum eigen-${EIGEN_VERSION}.tar.bz2 | awk '{print $1}'` = ${EIGEN_CHKSUM} ] || \
     ( >&2 echo "Failed to download eigen" && exit 1 )
 RUN tar xjf eigen-${EIGEN_VERSION}.tar.bz2
@@ -118,7 +182,7 @@ WORKDIR ${WORK}/swig
 RUN rm -f swig-${SWIG_VERSION}.tar.gz
 # Occasionally files downloaded from SourceForge are corrupted, so we try up to 5 times
 RUN for i in `seq 1 5`; do \
-        curl -L -o swig-${SWIG_VERSION}.tar.gz https://sourceforge.net/projects/swig/files/swig/swig-${SWIG_VERSION}/swig-${SWIG_VERSION}.tar.gz/download && \
+        curl -k -L -o swig-${SWIG_VERSION}.tar.gz https://sourceforge.net/projects/swig/files/swig/swig-${SWIG_VERSION}/swig-${SWIG_VERSION}.tar.gz/download && \
         [ `md5sum swig-${SWIG_VERSION}.tar.gz | awk '{print $1}'` = ${SWIG_CHKSUM} ] && touch swig_md5_ok && break; \
     done
 RUN test -e swig_md5_ok || ( >&2 echo "Failed to download SWIG" && exit 1 )
@@ -127,9 +191,8 @@ WORKDIR ${WORK}/swig/swig-${SWIG_VERSION}
 RUN source ${DEVTOOLSET_PATH}/enable && ./configure --prefix=${DEPS}
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
-RUN mkdir -p ${WORK}/freetype
 WORKDIR ${WORK}/freetype
-RUN curl -L -O https://download.savannah.gnu.org/releases/freetype/freetype-${FREETYPE_VERSION}.tar.gz && \
+RUN curl -k -L -O https://download.savannah.gnu.org/releases/freetype/freetype-${FREETYPE_VERSION}.tar.gz && \
     [ `md5sum freetype-${FREETYPE_VERSION}.tar.gz | awk '{print $1}'` = ${FREETYPE_CHKSUM} ] || \
     ( >&2 echo "Failed to download freetype" && exit 1 )
 RUN tar xzf freetype-${FREETYPE_VERSION}.tar.gz
@@ -141,7 +204,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${
 
 WORKDIR ${WORK}/cairo
 RUN for i in `seq 1 5`; do \
-        curl -L -O https://download.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.gz && \
+        curl -k -L -O https://download.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.gz && \
         [ `md5sum libpng-${LIBPNG_VERSION}.tar.gz | awk '{print $1}'` = ${LIBPNG_CHKSUM} ] && touch libpng_md5_ok && break; \
     done
 RUN test -e libpng_md5_ok || ( >&2 echo "Failed to download libpng" && exit 1 )
@@ -153,7 +216,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" \
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/cairo
-RUN curl -L -O https://www.cairographics.org/releases/pixman-${PIXMAN_VERSION}.tar.gz && \
+RUN curl -k -L -O https://www.cairographics.org/releases/pixman-${PIXMAN_VERSION}.tar.gz && \
     [ `md5sum pixman-${PIXMAN_VERSION}.tar.gz | awk '{print $1}'` = ${PIXMAN_CHKSUM} ] || \
     ( >&2 echo "Failed to download pixman" && exit 1 )
 RUN tar xzf pixman-${PIXMAN_VERSION}.tar.gz
@@ -164,7 +227,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" \
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/cairo
-RUN curl -L -O https://www.cairographics.org/releases/cairo-${CAIRO_VERSION}.tar.xz && \
+RUN curl -k -L -O https://www.cairographics.org/releases/cairo-${CAIRO_VERSION}.tar.xz && \
     [ `md5sum cairo-${CAIRO_VERSION}.tar.xz | awk '{print $1}'` = ${CAIRO_CHKSUM} ] || \
     ( >&2 echo "Failed to download cairo" && exit 1 )
 RUN tar xJf cairo-${CAIRO_VERSION}.tar.xz
@@ -176,7 +239,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${
 
 WORKDIR ${SRC}
 RUN if [ -n "${RDKIT_RELEASE}" ]; then \
-        curl -L -O ${RDKIT_GIT_URL}/archive/refs/tags/Release_${RDKIT_RELEASE}.tar.gz && \
+        curl -k -L -O ${RDKIT_GIT_URL}/archive/refs/tags/Release_${RDKIT_RELEASE}.tar.gz && \
             [ `md5sum Release_${RDKIT_RELEASE}.tar.gz | awk '{print $1}'` = ${RDKIT_CHKSUM} ] || \
             ( >&2 echo "Failed to download RDKit" && exit 1 ); \
         tar xzf Release_${RDKIT_RELEASE}.tar.gz && \

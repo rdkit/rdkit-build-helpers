@@ -19,7 +19,7 @@ NO_CACHE=""
 
 [ "$1" = "--clean" ] && NO_CACHE="--no-cache"
 
-docker build $NO_CACHE -t rdkit-knime-linux-${ARCH} -f ../Dockerfile_linux_${ARCH} --network=host --build-arg "ARCH=${ARCH}" ..
-docker create --name=rdkit-knime-linux-${ARCH}-container rdkit-knime-linux-${ARCH}:latest --entrypoint /
-docker cp rdkit-knime-linux-${ARCH}-container:/${ARCH}/. .
-docker rm rdkit-knime-linux-${ARCH}-container
+docker build $NO_CACHE -t rdkit-centos6-linux-${ARCH} -f ../Dockerfile_linux_${ARCH} --network=host --build-arg "ARCH=${ARCH}" ..
+docker create --name=rdkit-centos6-linux-${ARCH}-container rdkit-centos6-linux-${ARCH}:latest --entrypoint /
+docker cp rdkit-centos6-linux-${ARCH}-container:/${ARCH}/. .
+docker rm rdkit-centos6-linux-${ARCH}-container
