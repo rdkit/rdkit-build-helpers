@@ -1,16 +1,17 @@
-# Build Linux RDKit Java and C# DLLs for x86_64
+# Build Linux RDKit Java and C# DLLs for Alpine x86_64
 
 ARG ARCH="x86_64"
 ARG DEPS="/deps"
 ARG WORK="/work"
 ARG SRC="/src"
 ARG IMAGE="/image"
-#ARG RDKIT_RELEASE="2022_09_5"
-#ARG RDKIT_CHKSUM="158a3eef0c6ccd389a49a5a0eb383a1d"
-ARG RDKIT_GIT_URL="https://github.com/ptosco/rdkit"
-ARG RDKIT_BRANCH="minimallib"
+ARG RDKIT_RELEASE="2023_03_1"
+ARG RDKIT_CHKSUM="71810c39079ece54356d73a0d2fd0474"
+ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
+#ARG RDKIT_BRANCH="minimallib"
 
-FROM centos:7 AS build-stage
+FROM docker-repo.nibr.novartis.net/docker-base-image/nx_openjdk:8-alpine AS build-stage
+
 ARG ARCH
 ARG DEPS
 ARG WORK
@@ -44,20 +45,11 @@ ARG PIXMAN_VERSION="0.42.0"
 ARG PIXMAN_CHKSUM="d925aa9e9ed9d419b6c2e02a61a11d29"
 ARG CAIRO_VERSION="1.16.0"
 ARG CAIRO_CHKSUM="f19e0353828269c22bd72e271243a552"
-ARG DEVTOOLSET_PATH="/opt/rh/devtoolset-11"
 
-RUN yum update -y
-RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-11 bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel patch git
+RUN apk add --no-cache gcc g++ make musl-dev linux-headers pcre-dev openssl-dev xz-dev
 
-RUN curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo
-RUN yum install -y mono-devel
-
-RUN groupadd -g 1005 docker && \
-    useradd -u 1005500 -s /bin/bash -g docker docker && \
-    mkdir ${SRC} ${WORK} ${IMAGE} ${DEPS} && \
+RUN mkdir ${SRC} ${WORK} ${IMAGE} ${DEPS} && \
     chown -R docker:docker ${SRC} ${WORK} ${IMAGE} ${DEPS}
-RUN mkdir -p /home/docker && chown docker:docker /home/docker
 USER docker
 RUN mkdir -p ${WORK}/boost ${WORK}/cmake ${WORK}/eigen ${WORK}/zlib ${WORK}/bzip2 ${WORK}/freetype ${WORK}/swig ${WORK}/cairo
 
@@ -67,8 +59,8 @@ RUN curl -L -O https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz && \
     ( >&2 echo "Failed to download zlib" && exit 1 )
 RUN tar xzf zlib-${ZLIB_VERSION}.tar.gz
 WORKDIR ${WORK}/zlib/zlib-${ZLIB_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" ./configure --static --64 --prefix=${DEPS}
-RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+RUN CC="gcc -fPIC" ./configure --static --64 --prefix=${DEPS}
+RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/bzip2
 RUN curl -L -O https://sourceware.org/pub/bzip2/bzip2-${BZIP2_VERSION}.tar.gz && \
@@ -76,8 +68,8 @@ RUN curl -L -O https://sourceware.org/pub/bzip2/bzip2-${BZIP2_VERSION}.tar.gz &&
     ( >&2 echo "Failed to download bzip2" && exit 1 )
 RUN tar xzf bzip2-${BZIP2_VERSION}.tar.gz
 WORKDIR ${WORK}/bzip2/bzip2-${BZIP2_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && make CC="gcc -fPIC" PREFIX=${DEPS} -j${BUILD_CONCURRENCY}
-RUN source ${DEVTOOLSET_PATH}/enable && make CC="gcc -fPIC" PREFIX=${DEPS} -j${BUILD_CONCURRENCY} install
+RUN make CC="gcc -fPIC" PREFIX=${DEPS} -j${BUILD_CONCURRENCY}
+RUN make CC="gcc -fPIC" PREFIX=${DEPS} -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/boost
 RUN curl -L -O https://boostorg.jfrog.io/artifactory/main/release/`echo ${BOOST_VERSION} | sed "s|_|.|g"`/source/boost_${BOOST_VERSION}.tar.bz2 && \
@@ -85,8 +77,8 @@ RUN curl -L -O https://boostorg.jfrog.io/artifactory/main/release/`echo ${BOOST_
     ( >&2 echo "Failed to download boost" && exit 1 )
 RUN tar xjf boost_${BOOST_VERSION}.tar.bz2
 WORKDIR ${WORK}/boost/boost_${BOOST_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && ./bootstrap.sh --with-libraries=serialization,iostreams,regex,system --without-icu --prefix=${DEPS}
-RUN source ${DEVTOOLSET_PATH}/enable && \
+RUN ./bootstrap.sh --with-libraries=serialization,iostreams,regex,system --without-icu --prefix=${DEPS}
+RUN \
     ./b2 cflags=-fPIC cxxflags=-fPIC --prefix=${WORK}/boost/install variant=release link=static \
         --with-serialization --with-iostreams --with-regex --with-system \
         -sBZIP2_INCLUDE=${DEPS}/include -sBZIP2_LIBPATH=${DEPS}/lib \
@@ -99,8 +91,8 @@ RUN curl -L -O https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSI
     ( >&2 echo "Failed to download cmake" && exit 1 )
 RUN tar xzf cmake-${CMAKE_VERSION}.tar.gz
 WORKDIR ${WORK}/cmake/cmake-${CMAKE_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && ./bootstrap --prefix=${DEPS} --parallel=${BUILD_CONCURRENCY}
-RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+RUN ./bootstrap --prefix=${DEPS} --parallel=${BUILD_CONCURRENCY}
+RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/eigen
 RUN curl -L -o eigen-${EIGEN_VERSION}.tar.bz2 https://gitlab.com/libeigen/eigen/-/archive/${EIGEN_VERSION}/eigen-${EIGEN_VERSION}.tar.bz2 && \
@@ -110,8 +102,8 @@ RUN tar xjf eigen-${EIGEN_VERSION}.tar.bz2
 WORKDIR ${WORK}/eigen/eigen-${EIGEN_VERSION}
 RUN mkdir build
 WORKDIR ${WORK}/eigen/eigen-${EIGEN_VERSION}/build
-RUN source ${DEVTOOLSET_PATH}/enable && ${DEPS}/bin/cmake -DCMAKE_INSTALL_PREFIX=${DEPS} ..
-RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} install
+RUN ${DEPS}/bin/cmake -DCMAKE_INSTALL_PREFIX=${DEPS} ..
+RUN make -j${BUILD_CONCURRENCY} install
 
 RUN mkdir -p ${WORK}/swig
 WORKDIR ${WORK}/swig
@@ -124,8 +116,8 @@ RUN for i in `seq 1 5`; do \
 RUN test -e swig_md5_ok || ( >&2 echo "Failed to download SWIG" && exit 1 )
 RUN tar xzf swig-${SWIG_VERSION}.tar.gz
 WORKDIR ${WORK}/swig/swig-${SWIG_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && ./configure --prefix=${DEPS}
-RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+RUN ./configure --prefix=${DEPS}
+RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 RUN mkdir -p ${WORK}/freetype
 WORKDIR ${WORK}/freetype
@@ -134,10 +126,10 @@ RUN curl -L -O https://download.savannah.gnu.org/releases/freetype/freetype-${FR
     ( >&2 echo "Failed to download freetype" && exit 1 )
 RUN tar xzf freetype-${FREETYPE_VERSION}.tar.gz
 WORKDIR ${WORK}/freetype/freetype-${FREETYPE_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" CXX="g++ -fPIC" \
+RUN CC="gcc -fPIC" CXX="g++ -fPIC" \
     PKG_CONFIG_PATH=${DEPS}/lib/pkgconfig \
     ./configure --enable-static=yes --enable-shared=no --prefix=${DEPS}
-RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/cairo
 RUN for i in `seq 1 5`; do \
@@ -147,10 +139,11 @@ RUN for i in `seq 1 5`; do \
 RUN test -e libpng_md5_ok || ( >&2 echo "Failed to download libpng" && exit 1 )
 RUN tar xzf libpng-${LIBPNG_VERSION}.tar.gz
 WORKDIR ${WORK}/cairo/libpng-${LIBPNG_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" \
+RUN CC="gcc -fPIC -I${DEPS}/include" \
     PKG_CONFIG_PATH=${DEPS}/lib/pkgconfig \
+    LDFLAGS=-L${DEPS}/lib \
     ./configure --enable-shared=no --enable-static=yes --prefix=${DEPS}
-RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/cairo
 RUN curl -L -O https://www.cairographics.org/releases/pixman-${PIXMAN_VERSION}.tar.gz && \
@@ -158,10 +151,10 @@ RUN curl -L -O https://www.cairographics.org/releases/pixman-${PIXMAN_VERSION}.t
     ( >&2 echo "Failed to download pixman" && exit 1 )
 RUN tar xzf pixman-${PIXMAN_VERSION}.tar.gz
 WORKDIR ${WORK}/cairo/pixman-${PIXMAN_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" \
+RUN CC="gcc -fPIC" \
     PKG_CONFIG_PATH=${DEPS}/lib/pkgconfig \
     ./configure --enable-shared=no --enable-static=yes --prefix=${DEPS}
-RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/cairo
 RUN curl -L -O https://www.cairographics.org/releases/cairo-${CAIRO_VERSION}.tar.xz && \
@@ -169,10 +162,11 @@ RUN curl -L -O https://www.cairographics.org/releases/cairo-${CAIRO_VERSION}.tar
     ( >&2 echo "Failed to download cairo" && exit 1 )
 RUN tar xJf cairo-${CAIRO_VERSION}.tar.xz
 WORKDIR ${WORK}/cairo/cairo-${CAIRO_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" CXX="g++ -fPIC" \
+RUN CC="gcc -fPIC -I${DEPS}/include" CXX="g++ -fPIC -I${DEPS}/include" \
     PKG_CONFIG_PATH=${DEPS}/lib/pkgconfig \
+    LDFLAGS=-L${DEPS}/lib \
     ./configure --enable-shared=no --enable-static=yes --prefix=${DEPS}
-RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${SRC}
 RUN if [ -n "${RDKIT_RELEASE}" ]; then \
@@ -196,13 +190,9 @@ RUN sed -i -e "s|if(WIN32)|if(FALSE)|" \
 RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n\1\2-static-libgcc -static-libstdc++ \3|" \
     Code/JavaWrappers/csharp_wrapper/CMakeLists.txt
 
-# Patch for SWIG loggers
-RUN sed -i "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/gmwrapper/GraphMolJava.i
-RUN sed -i "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/csharp_wrapper/GraphMolCSharp.i
-
 RUN mkdir build
 WORKDIR ${SRC}/rdkit/build
-RUN source ${DEVTOOLSET_PATH}/enable && FREETYPE_DIR=${DEPS} ${DEPS}/bin/cmake \
+RUN FREETYPE_DIR=${DEPS} ${DEPS}/bin/cmake \
     -D RDK_BUILD_INCHI_SUPPORT=ON \
     -D RDK_BUILD_AVALON_SUPPORT=ON \
     -D RDK_BUILD_PYTHON_WRAPPERS=OFF \
@@ -213,7 +203,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && FREETYPE_DIR=${DEPS} ${DEPS}/bin/cmake \
     -D RDK_INSTALL_INTREE=OFF \
     -D RDK_BUILD_SWIG_WRAPPERS=ON \
     -D RDK_BUILD_SWIG_JAVA_WRAPPER=ON \
-    -D RDK_BUILD_SWIG_CSHARP_WRAPPER=ON \
+    -D RDK_BUILD_SWIG_CSHARP_WRAPPER=OFF \
     -D RDK_BUILD_THREADSAFE_SSS=ON \
     -D RDK_USE_BOOST_SERIALIZATION=ON \
     -D RDK_BUILD_CPP_TESTS=ON \
@@ -232,8 +222,10 @@ RUN source ${DEVTOOLSET_PATH}/enable && FREETYPE_DIR=${DEPS} ${DEPS}/bin/cmake \
     -D CAIRO_INCLUDE_DIR=${DEPS}/include/cairo \
     -D CAIRO_LIBRARY_DIR=${DEPS}/lib \
     -D CMAKE_INSTALL_PREFIX=${IMAGE} \
+    -D CMAKE_C_FLAGS="-D__isascii\(val\)=\(\(unsigned\)\(val\)\ \<=\ 0x7F\)" \
+    -D CMAKE_CXX_FLAGS="-D__isascii\(val\)=\(\(unsigned\)\(val\)\ \<=\ 0x7F\)" \
     ..
-RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 RUN RDBASE=${SRC}/rdkit ${DEPS}/bin/ctest
 
 FROM scratch as export-stage
@@ -243,5 +235,3 @@ ARG RDKIT_RELEASE
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKit.jar /${ARCH}/org.RDKit.jar
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKitDoc.jar /${ARCH}/org.RDKitDoc.jar
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/libGraphMolWrap.so /${ARCH}/libGraphMolWrap.so
-COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/csharp_wrapper/RDKFuncs.so /${ARCH}/RDKFuncs.so
-COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/csharp_wrapper/RDKit2DotNet.dll /${ARCH}/RDKit2DotNet.dll
