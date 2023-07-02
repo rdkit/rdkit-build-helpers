@@ -9,12 +9,12 @@
     BUILD_CONCURRENCY: 6
     MIN_MACOS_VERSION: "10.13"
     BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
-    # RDKIT_RELEASE: "2022_09_5"
-    RDKIT_RELEASE: ""
-    # RDKIT_CHKSUM: "158a3eef0c6ccd389a49a5a0eb383a1d"
-    RDKIT_CHKSUM: ""
+    RDKIT_RELEASE: "2023_03_2"
+    # RDKIT_RELEASE: ""
+    RDKIT_CHKSUM: "697b407c8a65535ae25a238e7cfcc5f0"
+    # RDKIT_CHKSUM: ""
     RDKIT_GIT_URL: "https://github.com/ptosco/rdkit"
-    RDKIT_BRANCH: "minimallib"
+    # RDKIT_BRANCH: "minimallib"
     PKGCONFIG_VERSION: "0.29.2"
     PKGCONFIG_CHECKSUM: "76e501663b29cb7580245720edfb6106164fad2b"
     ZLIB_VERSION: "1.2.13"
@@ -651,8 +651,10 @@
           Code/JavaWrappers/gmwrapper/CMakeLists.txt && \
         sed -i ".orig" "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,-undefined,error;\${RDKit_Wrapper_Libs};{{ DEPS }}/lib/libcairo.a;{{ DEPS }}/lib/libpixman-1.a;{{ DEPS }}/lib/libpng16.a;{{ DEPS }}/lib/libz.a;{{ DEPS }}/lib/libbz2.a\")\n\1\2\3 \"-framework CoreFoundation\" \"-framework CoreGraphics\"|" \
           Code/JavaWrappers/csharp_wrapper/CMakeLists.txt && \
-        sed -i ".orig" "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/gmwrapper/GraphMolJava.i && \
-        sed -i ".orig" "s|^\(.include <RDGeneral/\)\(versions.h>\)|\1\2\n\1RDLog.h>|" Code/JavaWrappers/csharp_wrapper/GraphMolCSharp.i
+        sed =i ".orig" -e "s|\(AVALONTOOLS_MD5SUM \)\"8e0fdedce0d93bdbc1e3c6ab3ae5c6cf\"|\1\"7d3c87860544e74c886328716ff3bdd0\"|" \
+          -e "s|\(AVALON_VERSION \)\"2\.0\.4a\"|\1\"2.0.5-pre.0\"|" \
+          -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1ptosco\2|" \
+          External/AvalonTools/CMakeLists.txt
       args:
         chdir: "{{ SRC }}/rdkit"
 
