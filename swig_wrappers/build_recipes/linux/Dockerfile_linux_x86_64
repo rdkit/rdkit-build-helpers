@@ -197,8 +197,8 @@ RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}
     Code/JavaWrappers/csharp_wrapper/CMakeLists.txt
 
 # Patch for Avalon
-RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"8e0fdedce0d93bdbc1e3c6ab3ae5c6cf\"|\1\"7d3c87860544e74c886328716ff3bdd0\"|" \
-    -e "s|\(AVALON_VERSION \)\"2\.0\.4a\"|\1\"2.0.5-pre.0\"|" \
+RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"8e0fdedce0d93bdbc1e3c6ab3ae5c6cf\"|\1\"ccf62c36ac8da71e93d6586d1e20a1dc\"|" \
+    -e "s|\(AVALON_VERSION \)\"2\.0\.4a\"|\1\"2.0.5-pre.2\"|" \
     -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1ptosco\2|" \
     External/AvalonTools/CMakeLists.txt
 
