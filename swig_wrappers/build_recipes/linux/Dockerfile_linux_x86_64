@@ -5,8 +5,8 @@ ARG DEPS="/deps"
 ARG WORK="/work"
 ARG SRC="/src"
 ARG IMAGE="/image"
-ARG RDKIT_RELEASE="2023_03_2"
-ARG RDKIT_CHKSUM="697b407c8a65535ae25a238e7cfcc5f0"
+ARG RDKIT_RELEASE="2023_09_2"
+ARG RDKIT_CHKSUM="965c0f329b5c0cab557a7c308dff8fcf"
 ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
 #ARG RDKIT_BRANCH="minimallib"
 
@@ -24,26 +24,26 @@ ARG RDKIT_BRANCH
 USER root
 
 ARG BUILD_CONCURRENCY="6"
-ARG ZLIB_VERSION="1.2.13"
-ARG ZLIB_CHKSUM="9b8aa094c4e5765dabf4da391f00d15c"
+ARG ZLIB_VERSION="1.3"
+ARG ZLIB_CHKSUM="ff0ba4c292013dbc27530b3a81e1f9a813cd39de01ca5e0f8bf355702efa593e"
 ARG BZIP2_VERSION="1.0.8"
 ARG BZIP2_CHKSUM="67e051268d0c475ea773822f7500d0e5"
-ARG BOOST_VERSION="1_80_0"
-ARG BOOST_CHKSUM="df7dc2fc6de751753198a5bf70210da7"
-ARG CMAKE_VERSION="3.24.2"
-ARG CMAKE_CHKSUM="84d08f30b110401d8178f0708c19f1fe"
+ARG BOOST_VERSION="1_83_0"
+ARG BOOST_CHKSUM="6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e"
+ARG CMAKE_VERSION="3.27.7"
+ARG CMAKE_CHKSUM="0f11cf15c7f2fa6234b9fc415c78029c"
 ARG EIGEN_VERSION="3.4.0"
 ARG EIGEN_CHKSUM="132dde48fe2b563211675626d29f1707"
-ARG FREETYPE_VERSION="2.12.1"
-ARG FREETYPE_CHKSUM="8bc5c9c9df7ac12c504f8918552a7cf2"
+ARG FREETYPE_VERSION="2.13.2"
+ARG FREETYPE_CHKSUM="d99447cf00c5f2679918f66f2b5771f6"
 ARG SWIG_VERSION="3.0.12"
 ARG SWIG_CHKSUM="82133dfa7bba75ff9ad98a7046be687c"
-ARG LIBPNG_VERSION="1.6.38"
-ARG LIBPNG_CHKSUM="151d579116e601e393e780b7f46b2ff0"
-ARG PIXMAN_VERSION="0.42.0"
-ARG PIXMAN_CHKSUM="d925aa9e9ed9d419b6c2e02a61a11d29"
+ARG LIBPNG_VERSION="1.6.40"
+ARG LIBPNG_CHKSUM="8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42"
+ARG PIXMAN_VERSION="0.42.2"
+ARG PIXMAN_CHKSUM="0a4e327aef89c25f8cb474fbd01de834fd2a1b13fdf7db11ab72072082e45881cd16060673b59d02054b1711ae69c6e2395f6ae9214225ee7153939efcd2fa5d"
 ARG CAIRO_VERSION="1.16.0"
-ARG CAIRO_CHKSUM="f19e0353828269c22bd72e271243a552"
+ARG CAIRO_CHKSUM="00e81842ae5e81bb0343108884eb5205be0eac14" #sha1
 ARG DEVTOOLSET_PATH="/opt/rh/devtoolset-11"
 
 RUN yum update -y
@@ -63,7 +63,7 @@ RUN mkdir -p ${WORK}/boost ${WORK}/cmake ${WORK}/eigen ${WORK}/zlib ${WORK}/bzip
 
 WORKDIR ${WORK}/zlib
 RUN curl -L -O https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz && \
-    [ `md5sum zlib-${ZLIB_VERSION}.tar.gz | awk '{print $1}'` = ${ZLIB_CHKSUM} ] || \
+    [ `sha256sum zlib-${ZLIB_VERSION}.tar.gz | awk '{print $1}'` = ${ZLIB_CHKSUM} ] || \
     ( >&2 echo "Failed to download zlib" && exit 1 )
 RUN tar xzf zlib-${ZLIB_VERSION}.tar.gz
 WORKDIR ${WORK}/zlib/zlib-${ZLIB_VERSION}
@@ -81,7 +81,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && make CC="gcc -fPIC" PREFIX=${DEPS} -j${B
 
 WORKDIR ${WORK}/boost
 RUN curl -L -O https://boostorg.jfrog.io/artifactory/main/release/`echo ${BOOST_VERSION} | sed "s|_|.|g"`/source/boost_${BOOST_VERSION}.tar.bz2 && \
-    [ `md5sum boost_${BOOST_VERSION}.tar.bz2 | awk '{print $1}'` = ${BOOST_CHKSUM} ] || \
+    [ `sha256sum boost_${BOOST_VERSION}.tar.bz2 | awk '{print $1}'` = ${BOOST_CHKSUM} ] || \
     ( >&2 echo "Failed to download boost" && exit 1 )
 RUN tar xjf boost_${BOOST_VERSION}.tar.bz2
 WORKDIR ${WORK}/boost/boost_${BOOST_VERSION}
@@ -142,9 +142,9 @@ RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${
 WORKDIR ${WORK}/cairo
 RUN for i in `seq 1 5`; do \
         curl -L -O https://download.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.gz && \
-        [ `md5sum libpng-${LIBPNG_VERSION}.tar.gz | awk '{print $1}'` = ${LIBPNG_CHKSUM} ] && touch libpng_md5_ok && break; \
+        [ `sha256sum libpng-${LIBPNG_VERSION}.tar.gz | awk '{print $1}'` = ${LIBPNG_CHKSUM} ] && touch libpng_sha256_ok && break; \
     done
-RUN test -e libpng_md5_ok || ( >&2 echo "Failed to download libpng" && exit 1 )
+RUN test -e libpng_sha256_ok || ( >&2 echo "Failed to download libpng" && exit 1 )
 RUN tar xzf libpng-${LIBPNG_VERSION}.tar.gz
 WORKDIR ${WORK}/cairo/libpng-${LIBPNG_VERSION}
 RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" \
@@ -154,7 +154,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${
 
 WORKDIR ${WORK}/cairo
 RUN curl -L -O https://www.cairographics.org/releases/pixman-${PIXMAN_VERSION}.tar.gz && \
-    [ `md5sum pixman-${PIXMAN_VERSION}.tar.gz | awk '{print $1}'` = ${PIXMAN_CHKSUM} ] || \
+    [ `sha512sum pixman-${PIXMAN_VERSION}.tar.gz | awk '{print $1}'` = ${PIXMAN_CHKSUM} ] || \
     ( >&2 echo "Failed to download pixman" && exit 1 )
 RUN tar xzf pixman-${PIXMAN_VERSION}.tar.gz
 WORKDIR ${WORK}/cairo/pixman-${PIXMAN_VERSION}
@@ -165,7 +165,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${
 
 WORKDIR ${WORK}/cairo
 RUN curl -L -O https://www.cairographics.org/releases/cairo-${CAIRO_VERSION}.tar.xz && \
-    [ `md5sum cairo-${CAIRO_VERSION}.tar.xz | awk '{print $1}'` = ${CAIRO_CHKSUM} ] || \
+    [ `sha1sum cairo-${CAIRO_VERSION}.tar.xz | awk '{print $1}'` = ${CAIRO_CHKSUM} ] || \
     ( >&2 echo "Failed to download cairo" && exit 1 )
 RUN tar xJf cairo-${CAIRO_VERSION}.tar.xz
 WORKDIR ${WORK}/cairo/cairo-${CAIRO_VERSION}
@@ -197,9 +197,9 @@ RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}
     Code/JavaWrappers/csharp_wrapper/CMakeLists.txt
 
 # Patch for Avalon
-RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"8e0fdedce0d93bdbc1e3c6ab3ae5c6cf\"|\1\"ccf62c36ac8da71e93d6586d1e20a1dc\"|" \
-    -e "s|\(AVALON_VERSION \)\"2\.0\.4a\"|\1\"2.0.5-pre.2\"|" \
-    -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1ptosco\2|" \
+RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\"1e74ea31cd5af4377255eb9b339c9003\"|" \
+    -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre1\"|" \
+    -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
     External/AvalonTools/CMakeLists.txt
 
 RUN mkdir build
