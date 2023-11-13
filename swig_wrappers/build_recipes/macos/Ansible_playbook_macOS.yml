@@ -126,10 +126,10 @@
     block:
     - name: download zlib
       ansible.builtin.shell: if [ ! -e zlib-{{ ZLIB_VERSION }}.tar.gz ] || \
-          [ `md5 -q zlib-{{ ZLIB_VERSION }}.tar.gz` != {{ ZLIB_CHKSUM }} ]; then \
+          [ `shasum -a 256 zlib-{{ ZLIB_VERSION }}.tar.gz | awk "{print \\$1}"` != {{ ZLIB_CHKSUM }} ]; then \
           rm -f zlib-{{ ZLIB_VERSION }}.tar.gz; \
           curl -L -O https://zlib.net/zlib-{{ ZLIB_VERSION }}.tar.gz && \
-            [ `md5 -q zlib-{{ ZLIB_VERSION }}.tar.gz` = {{ ZLIB_CHKSUM }} ] || \
+            [ `shasum -a 256 zlib-{{ ZLIB_VERSION }}.tar.gz | awk "{print \\$1}"` = {{ ZLIB_CHKSUM }} ] || \
             ( >&2 echo "Failed to download zlib" && exit 1 ); \
         fi
       args:
@@ -191,10 +191,10 @@
     block:
     - name: download boost
       ansible.builtin.shell: if [ ! -e boost_{{ BOOST_VERSION }}.tar.bz2 ] || \
-          [ `md5 -q boost_{{ BOOST_VERSION }}.tar.bz2` != {{ BOOST_CHKSUM }} ]; then \
+          [ `shasum -a 256 boost_{{ BOOST_VERSION }}.tar.bz2 | awk "{print \\$1}"` != {{ BOOST_CHKSUM }} ]; then \
           rm -f boost_{{ BOOST_VERSION }}.tar.bz2; \
           curl -L -O https://boostorg.jfrog.io/artifactory/main/release/`echo {{ BOOST_VERSION }} | sed "s|_|.|g"`/source/boost_{{ BOOST_VERSION }}.tar.bz2 && \
-            [ `md5 -q boost_{{ BOOST_VERSION }}.tar.bz2` = {{ BOOST_CHKSUM }} ] || \
+            [ `shasum -a 256 boost_{{ BOOST_VERSION }}.tar.bz2 | awk "{print \\$1}"` = {{ BOOST_CHKSUM }} ] || \
             ( >&2 echo "Failed to download boost" && exit 1 ); \
         fi
       args:
@@ -418,11 +418,11 @@
     block:
     - name: download libpng
       ansible.builtin.shell: if [ ! -e libpng-{{ LIBPNG_VERSION }}.tar.gz ] || \
-          [ `md5 -q libpng-{{ LIBPNG_VERSION }}.tar.gz` != {{ LIBPNG_CHKSUM }} ]; then \
+          [ `shasum -a 256 libpng-{{ LIBPNG_VERSION }}.tar.gz | awk "{print \\$1}"` != {{ LIBPNG_CHKSUM }} ]; then \
           rm -f libpng-{{ LIBPNG_VERSION }}.tar.gz; \
           for i in `seq 1 5`; do \
             curl -L -O https://download.sourceforge.net/libpng/libpng-{{ LIBPNG_VERSION }}.tar.gz && \
-              [ `md5 -q libpng-{{ LIBPNG_VERSION }}.tar.gz` = {{ LIBPNG_CHKSUM }} ] && touch libpng_md5_ok && break; \
+              [ `shasum -a 256 libpng-{{ LIBPNG_VERSION }}.tar.gz | awk "{print \\$1}"` = {{ LIBPNG_CHKSUM }} ] && touch libpng_md5_ok && break; \
           done; \
           test -e libpng_md5_ok || ( >&2 echo "Failed to download libpng" && exit 1 ); \
         fi
@@ -457,10 +457,10 @@
     block:
     - name: download pixman
       ansible.builtin.shell: if [ ! -e pixman-{{ PIXMAN_VERSION }}.tar.gz ] || \
-          [ `md5 -q pixman-{{ PIXMAN_VERSION }}.tar.gz` != {{ PIXMAN_CHKSUM }} ]; then \
+          [ `shasum -a 512 pixman-{{ PIXMAN_VERSION }}.tar.gz | awk "{print \\$1}"` != {{ PIXMAN_CHKSUM }} ]; then \
           rm -f pixman-{{ PIXMAN_VERSION }}.tar.gz; \
           curl -L -O https://www.cairographics.org/releases/pixman-{{ PIXMAN_VERSION }}.tar.gz && \
-            [ `md5 -q pixman-{{ PIXMAN_VERSION }}.tar.gz` = {{ PIXMAN_CHKSUM }} ] || \
+            [ `shasum -a 512 pixman-{{ PIXMAN_VERSION }}.tar.gz | awk "{print \\$1}"` = {{ PIXMAN_CHKSUM }} ] || \
             ( >&2 echo "Failed to download pixman" && exit 1 ); \
         fi
       args:
@@ -494,10 +494,10 @@
     block:
     - name: download cairo
       ansible.builtin.shell: if [ ! -e cairo-{{ CAIRO_VERSION }}.tar.xz ] || \
-          [ `md5 -q cairo-{{ CAIRO_VERSION }}.tar.xz` != {{ CAIRO_CHKSUM }} ]; then \
+          [ `shasum cairo-{{ CAIRO_VERSION }}.tar.xz | awk "{print \\$1}"` != {{ CAIRO_CHKSUM }} ]; then \
           rm -f cairo-{{ CAIRO_VERSION }}.tar.xz; \
           curl -L -O https://www.cairographics.org/releases/cairo-{{ CAIRO_VERSION }}.tar.xz && \
-            [ `md5 -q cairo-{{ CAIRO_VERSION }}.tar.xz` = {{ CAIRO_CHKSUM }} ] || \
+            [ `shasum cairo-{{ CAIRO_VERSION }}.tar.xz | awk "{print \\$1}"` = {{ CAIRO_CHKSUM }} ] || \
             ( >&2 echo "Failed to download cairo" && exit 1 ); \
         fi
       args:
@@ -720,7 +720,7 @@
 
     - name: copy RDKit libraries
       ansible.builtin.shell: cp Code/JavaWrappers/gmwrapper/libGraphMolWrap.jnilib Code/JavaWrappers/gmwrapper/org.RDKit*.jar {{ IMAGE }} && \
-        cp Code/JavaWrappers/csharp_wrapper/RDKFuncs.so Code/JavaWrappers/csharp_wrapper/RDKit2DotNet.dll {{ IMAGE }}
+        cp Code/JavaWrappers/csharp_wrapper/RDKFuncs.dylib Code/JavaWrappers/csharp_wrapper/RDKit2DotNet.dll {{ IMAGE }}
       args:
         chdir: "{{ SRC }}/rdkit"
     when: libGraphMolWrap.stat.exists == false
