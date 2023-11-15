@@ -129,9 +129,11 @@ RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${
 
 RUN mkdir -p ${WORK}/freetype
 WORKDIR ${WORK}/freetype
-RUN curl -L -O https://download.savannah.gnu.org/releases/freetype/freetype-${FREETYPE_VERSION}.tar.gz && \
-    [ `md5sum freetype-${FREETYPE_VERSION}.tar.gz | awk '{print $1}'` = ${FREETYPE_CHKSUM} ] || \
-    ( >&2 echo "Failed to download freetype" && exit 1 )
+RUN for i in `seq 1 5`; do \
+        curl -L -o freetype-${FREETYPE_VERSION}.tar.gz https://sourceforge.net/projects/freetype/files/freetype2/${FREETYPE_VERSION}/freetype-${FREETYPE_VERSION}.tar.gz/download && \
+        [ `md5sum freetype-${FREETYPE_VERSION}.tar.gz | awk '{print $1}'` = ${FREETYPE_CHKSUM} ] && touch freetype_md5_ok && break; \
+    done
+RUN test -e freetype_md5_ok || ( >&2 echo "Failed to download freetype" && exit 1 )
 RUN tar xzf freetype-${FREETYPE_VERSION}.tar.gz
 WORKDIR ${WORK}/freetype/freetype-${FREETYPE_VERSION}
 RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" CXX="g++ -fPIC" \
@@ -197,8 +199,8 @@ RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}
     Code/JavaWrappers/csharp_wrapper/CMakeLists.txt
 
 # Patch for Avalon
-RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\"1e74ea31cd5af4377255eb9b339c9003\"|" \
-    -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre1\"|" \
+RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\"e968b96d7d37677065901b28978fa095\"|" \
+    -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
     -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
     External/AvalonTools/CMakeLists.txt
 

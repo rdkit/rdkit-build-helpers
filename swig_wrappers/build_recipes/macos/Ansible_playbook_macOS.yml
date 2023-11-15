@@ -383,9 +383,11 @@
       ansible.builtin.shell: if [ ! -e freetype-{{ FREETYPE_VERSION }}.tar.gz ] || \
           [ `md5 -q freetype-{{ FREETYPE_VERSION }}.tar.gz` != {{ FREETYPE_CHKSUM }} ]; then \
           rm -f freetype-{{ FREETYPE_VERSION }}.tar.gz; \
-          curl -L -O https://download.savannah.gnu.org/releases/freetype/freetype-{{ FREETYPE_VERSION }}.tar.gz && \
-            [ `md5 -q freetype-{{ FREETYPE_VERSION }}.tar.gz` = {{ FREETYPE_CHKSUM }} ] || \
-            ( >&2 echo "Failed to download freetype" && exit 1 ); \
+          for i in `seq 1 5`; do \
+            curl -L -o freetype-{{ FREETYPE_VERSION }}.tar.gz https://sourceforge.net/projects/freetype/files/freetype2/{{ FREETYPE_VERSION }}/freetype-{{ FREETYPE_VERSION }}.tar.gz/download && \
+              [ `md5 -q freetype-{{ FREETYPE_VERSION }}.tar.gz` = {{ FREETYPE_CHKSUM }} ] && touch freetype_md5_ok && break; \
+          done; \
+          test -e freetype_md5_ok || ( >&2 echo "Failed to download freetype" && exit 1 ); \
         fi
       args:
         chdir: "{{ WORK }}/freetype"
@@ -652,8 +654,8 @@
           Code/JavaWrappers/gmwrapper/CMakeLists.txt && \
         sed -i ".orig" "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,-undefined,error;\${RDKit_Wrapper_Libs};{{ DEPS }}/lib/libcairo.a;{{ DEPS }}/lib/libpixman-1.a;{{ DEPS }}/lib/libpng16.a;{{ DEPS }}/lib/libz.a;{{ DEPS }}/lib/libbz2.a\")\n\1\2\3 \"-framework CoreFoundation\" \"-framework CoreGraphics\"|" \
           Code/JavaWrappers/csharp_wrapper/CMakeLists.txt && \
-        sed -i ".orig" -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\"1e74ea31cd5af4377255eb9b339c9003\"|" \
-          -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre1\"|" \
+        sed -i ".orig" -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\"e968b96d7d37677065901b28978fa095\"|" \
+          -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
           -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
           External/AvalonTools/CMakeLists.txt
       args:
