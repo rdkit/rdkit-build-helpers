@@ -9,9 +9,9 @@
     BUILD_CONCURRENCY: 6
     MIN_MACOS_VERSION: "10.13"
     BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
-    RDKIT_RELEASE: "2023_09_3"
+    RDKIT_RELEASE: "2023_09_2"
     # RDKIT_RELEASE: ""
-    RDKIT_CHKSUM: "9375bafe822639ba2752baa2deb5e387"
+    RDKIT_CHKSUM: "965c0f329b5c0cab557a7c308dff8fcf"
     # RDKIT_CHKSUM: ""
     RDKIT_GIT_URL: "https://github.com/rdkit/rdkit"
     # RDKIT_BRANCH: "minimallib"
