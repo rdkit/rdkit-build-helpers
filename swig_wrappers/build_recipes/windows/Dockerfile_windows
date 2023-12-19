@@ -6,8 +6,8 @@ ARG DEPS="/deps"
 ARG WORK="/work"
 ARG SRC="/src"
 ARG IMAGE="/image"
-ARG RDKIT_RELEASE="2023_09_2"
-ARG RDKIT_CHKSUM="965c0f329b5c0cab557a7c308dff8fcf"
+ARG RDKIT_RELEASE="2023_09_3"
+ARG RDKIT_CHKSUM="9375bafe822639ba2752baa2deb5e387"
 ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
 #ARG RDKIT_BRANCH="minimallib"
 
@@ -225,6 +225,8 @@ RUN if [ -n "${RDKIT_RELEASE}" ]; then \
         git clone ${RDKIT_GIT_URL}.git && cd rdkit && git checkout ${RDKIT_BRANCH}; \
     fi
 WORKDIR ${SRC}/rdkit
+# Following line is to force static libz linking
+RUN sed -i -e "s|if (WIN32)|if (FALSE)|" CMakeLists.txt
 RUN sed -i -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo\)|\1target_include_directories(MolDraw2D PUBLIC ${DEPS}/include/cairo)\n\1\2 ${DEPS}/lib/libcairo.a /usr/${ARCH}-w64-mingw32/sys-root/mingw/lib/libssp.a ${DEPS}/lib/libpixman-1.a ${DEPS}/lib/libpng16.a|" \
     -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(.*\)\()\)|\1\2\3 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a\4|" \
     Code/GraphMol/MolDraw2D/CMakeLists.txt
