@@ -5,10 +5,6 @@ ARG DEPS="/deps"
 ARG WORK="/work"
 ARG SRC="/src"
 ARG IMAGE="/image"
-ARG RDKIT_RELEASE="2023_09_3"
-ARG RDKIT_CHKSUM="9375bafe822639ba2752baa2deb5e387"
-ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
-#ARG RDKIT_BRANCH="minimallib"
 
 FROM centos:7 AS build-stage
 ARG ARCH
@@ -16,16 +12,12 @@ ARG DEPS
 ARG WORK
 ARG SRC
 ARG IMAGE
-ARG RDKIT_RELEASE
-ARG RDKIT_CHKSUM
-ARG RDKIT_GIT_URL
-ARG RDKIT_BRANCH
 
 USER root
 
 ARG BUILD_CONCURRENCY="6"
-ARG ZLIB_VERSION="1.3"
-ARG ZLIB_CHKSUM="ff0ba4c292013dbc27530b3a81e1f9a813cd39de01ca5e0f8bf355702efa593e"
+ARG ZLIB_VERSION="1.3.1"
+ARG ZLIB_CHKSUM="9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
 ARG BZIP2_VERSION="1.0.8"
 ARG BZIP2_CHKSUM="67e051268d0c475ea773822f7500d0e5"
 ARG BOOST_VERSION="1_83_0"
@@ -36,8 +28,8 @@ ARG EIGEN_VERSION="3.4.0"
 ARG EIGEN_CHKSUM="132dde48fe2b563211675626d29f1707"
 ARG FREETYPE_VERSION="2.13.2"
 ARG FREETYPE_CHKSUM="d99447cf00c5f2679918f66f2b5771f6"
-ARG SWIG_VERSION="3.0.12"
-ARG SWIG_CHKSUM="82133dfa7bba75ff9ad98a7046be687c"
+ARG SWIG_VERSION="4.2.0"
+ARG SWIG_CHKSUM="4d03374a2c30367699fa0928e1d901e8"
 ARG LIBPNG_VERSION="1.6.40"
 ARG LIBPNG_CHKSUM="8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42"
 ARG PIXMAN_VERSION="0.42.2"
@@ -48,7 +40,7 @@ ARG DEVTOOLSET_PATH="/opt/rh/devtoolset-11"
 
 RUN yum update -y
 RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-11 bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel patch git
+RUN yum install -y devtoolset-11 bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel patch git pcre2-devel
 
 RUN curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo
 RUN yum install -y mono-devel
@@ -177,6 +169,10 @@ RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" CXX="g++ -fPIC" \
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${SRC}
+ARG RDKIT_RELEASE="2023_09_5"
+ARG RDKIT_CHKSUM="e03cf217475c69c698f2928717bb9df4"
+ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
+ARG RDKIT_BRANCH="master"
 RUN if [ -n "${RDKIT_RELEASE}" ]; then \
         curl -L -O ${RDKIT_GIT_URL}/archive/refs/tags/Release_${RDKIT_RELEASE}.tar.gz && \
             [ `md5sum Release_${RDKIT_RELEASE}.tar.gz | awk '{print $1}'` = ${RDKIT_CHKSUM} ] || \
@@ -184,7 +180,8 @@ RUN if [ -n "${RDKIT_RELEASE}" ]; then \
         tar xzf Release_${RDKIT_RELEASE}.tar.gz && \
         ln -s rdkit-Release_${RDKIT_RELEASE} rdkit; \
     else \
-        git clone ${RDKIT_GIT_URL}.git && cd rdkit && git checkout ${RDKIT_BRANCH}; \
+        curl -L -O ${RDKIT_GIT_URL}/archive/refs/heads/${RDKIT_BRANCH}.zip && unzip ${RDKIT_BRANCH}.zip && \
+            ln -s rdkit-${RDKIT_BRANCH} rdkit; \
     fi
 WORKDIR ${SRC}/rdkit
 RUN sed -i -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo\)|\1target_include_directories(MolDraw2D PUBLIC ${DEPS}/include/cairo)\n\1\2 ${DEPS}/lib/libcairo.a ${DEPS}/lib/libpixman-1.a ${DEPS}/lib/libpng16.a|" \
@@ -203,6 +200,9 @@ RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\
     -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
     -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
     External/AvalonTools/CMakeLists.txt
+
+# Patch for Comic Neue font checksum
+RUN sed -i -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt
 
 RUN mkdir build
 WORKDIR ${SRC}/rdkit/build
@@ -243,7 +243,6 @@ RUN RDBASE=${SRC}/rdkit ${DEPS}/bin/ctest
 FROM scratch as export-stage
 ARG ARCH
 ARG SRC
-ARG RDKIT_RELEASE
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKit.jar /${ARCH}/org.RDKit.jar
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKitDoc.jar /${ARCH}/org.RDKitDoc.jar
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/libGraphMolWrap.so /${ARCH}/libGraphMolWrap.so

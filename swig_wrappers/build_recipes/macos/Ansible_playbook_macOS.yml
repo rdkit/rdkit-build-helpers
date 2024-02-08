@@ -9,17 +9,17 @@
     BUILD_CONCURRENCY: 6
     MIN_MACOS_VERSION: "10.13"
     BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
-    RDKIT_RELEASE: "2023_09_3"
+    RDKIT_RELEASE: "2023_09_5"
     # RDKIT_RELEASE: ""
-    RDKIT_CHKSUM: "9375bafe822639ba2752baa2deb5e387"
+    RDKIT_CHKSUM: "e03cf217475c69c698f2928717bb9df4"
     # RDKIT_CHKSUM: ""
     RDKIT_GIT_URL: "https://github.com/rdkit/rdkit"
-    # RDKIT_BRANCH: "minimallib"
+    # RDKIT_BRANCH: "master"
     RDKIT_BRANCH: ""
     PKGCONFIG_VERSION: "0.29.2"
     PKGCONFIG_CHECKSUM: "76e501663b29cb7580245720edfb6106164fad2b"
-    ZLIB_VERSION: "1.3"
-    ZLIB_CHKSUM: "ff0ba4c292013dbc27530b3a81e1f9a813cd39de01ca5e0f8bf355702efa593e"
+    ZLIB_VERSION: "1.3.1"
+    ZLIB_CHKSUM: "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
     BZIP2_VERSION: "1.0.8"
     BZIP2_CHKSUM: "67e051268d0c475ea773822f7500d0e5"
     BOOST_VERSION: "1_83_0"
@@ -32,8 +32,8 @@
     PCRE_CHKSUM: "4452288e6a0eefb2ab11d36010a1eebb"
     FREETYPE_VERSION: "2.13.2"
     FREETYPE_CHKSUM: "d99447cf00c5f2679918f66f2b5771f6"
-    SWIG_VERSION: "3.0.12"
-    SWIG_CHKSUM: "82133dfa7bba75ff9ad98a7046be687c"
+    SWIG_VERSION: "4.2.0"
+    SWIG_CHKSUM: "4d03374a2c30367699fa0928e1d901e8"
     LIBPNG_VERSION: "1.6.40"
     LIBPNG_CHKSUM: "8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42"
     PIXMAN_VERSION: "0.42.2"
@@ -637,7 +637,8 @@
           rm -f rdkit && \
           ln -s rdkit-Release_{{ RDKIT_RELEASE }} rdkit; \
         else \
-          git clone "{{ RDKIT_GIT_URL }}.git" && cd rdkit && git checkout {{ RDKIT_BRANCH }}; \
+          curl -L -O {{ RDKIT_GIT_URL }}/archive/refs/heads/{{ RDKIT_BRANCH }}.zip && unzip {{ RDKIT_BRANCH }}.zip && \
+              ln -s rdkit-{{ RDKIT_BRANCH }} rdkit; \
         fi
       args:
         chdir: "{{ SRC }}"
@@ -657,7 +658,8 @@
         sed -i ".orig" -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\"e968b96d7d37677065901b28978fa095\"|" \
           -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
           -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
-          External/AvalonTools/CMakeLists.txt
+          External/AvalonTools/CMakeLists.txt && \
+        sed -i ".orig" -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt
       args:
         chdir: "{{ SRC }}/rdkit"
 

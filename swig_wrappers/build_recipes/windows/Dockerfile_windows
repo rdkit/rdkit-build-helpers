@@ -6,10 +6,6 @@ ARG DEPS="/deps"
 ARG WORK="/work"
 ARG SRC="/src"
 ARG IMAGE="/image"
-ARG RDKIT_RELEASE="2023_09_3"
-ARG RDKIT_CHKSUM="9375bafe822639ba2752baa2deb5e387"
-ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
-#ARG RDKIT_BRANCH="minimallib"
 
 FROM fedora:36 AS build-stage-prep
 ARG ARCH
@@ -17,10 +13,6 @@ ARG DEPS
 ARG WORK
 ARG SRC
 ARG IMAGE
-ARG RDKIT_RELEASE
-ARG RDKIT_CHKSUM
-ARG RDKIT_GIT_URL
-ARG RDKIT_BRANCH
 
 RUN echo "Building Windows ${ARCH} Java and C# DLLs"
 RUN [ "${ARCH}" = x86_64 ] || [ "${ARCH}" = i686 ] || \
@@ -63,12 +55,8 @@ ARG WORK
 ARG SRC
 ARG IMAGE
 ARG BUILD_CONCURRENCY="6"
-ARG RDKIT_RELEASE
-ARG RDKIT_CHKSUM
-ARG RDKIT_GIT_URL
-ARG RDKIT_BRANCH
-ARG ZLIB_VERSION="1.3"
-ARG ZLIB_CHKSUM="ff0ba4c292013dbc27530b3a81e1f9a813cd39de01ca5e0f8bf355702efa593e"
+ARG ZLIB_VERSION="1.3.1"
+ARG ZLIB_CHKSUM="9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
 ARG BZIP2_VERSION="1.0.8"
 ARG BZIP2_CHKSUM="67e051268d0c475ea773822f7500d0e5"
 ARG BOOST_VERSION="1_83_0"
@@ -79,8 +67,8 @@ ARG EIGEN_VERSION="3.4.0"
 ARG EIGEN_CHKSUM="132dde48fe2b563211675626d29f1707"
 ARG FREETYPE_VERSION="2.13.2"
 ARG FREETYPE_CHKSUM="d99447cf00c5f2679918f66f2b5771f6"
-ARG SWIG_VERSION="3.0.12"
-ARG SWIG_CHKSUM="82133dfa7bba75ff9ad98a7046be687c"
+ARG SWIG_VERSION="4.2.0"
+ARG SWIG_CHKSUM="4d03374a2c30367699fa0928e1d901e8"
 ARG LIBPNG_VERSION="1.6.40"
 ARG LIBPNG_CHKSUM="8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42"
 ARG PIXMAN_VERSION="0.42.2"
@@ -91,7 +79,7 @@ ARG CAIRO_CHKSUM="00e81842ae5e81bb0343108884eb5205be0eac14" #sha1
 RUN mkdir -p ${WORK}/boost ${WORK}/cmake ${WORK}/eigen ${WORK}/zlib ${WORK}/bzip2 ${WORK}/freetype ${WORK}/swig ${WORK}/cairo
 
 WORKDIR ${WORK}/zlib
-RUN curl -L -O https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz && \
+RUN curl -L -O https://www.zlib.net/fossils/zlib-${ZLIB_VERSION}.tar.gz && \
     [ `sha256sum zlib-${ZLIB_VERSION}.tar.gz | awk '{print $1}'` = ${ZLIB_CHKSUM} ] || \
     ( >&2 echo "Failed to download zlib" && exit 1 )
 RUN tar xzf zlib-${ZLIB_VERSION}.tar.gz
@@ -215,6 +203,10 @@ RUN CC="${ARCH}-w64-mingw32-gcc -fPIC -I${DEPS}/include" \
 RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${SRC}
+ARG RDKIT_RELEASE="2023_09_5"
+ARG RDKIT_CHKSUM="e03cf217475c69c698f2928717bb9df4"
+ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
+ARG RDKIT_BRANCH="master"
 RUN if [ -n "${RDKIT_RELEASE}" ]; then \
         curl -L -O ${RDKIT_GIT_URL}/archive/refs/tags/Release_${RDKIT_RELEASE}.tar.gz && \
             [ `md5sum Release_${RDKIT_RELEASE}.tar.gz | awk '{print $1}'` = ${RDKIT_CHKSUM} ] || \
@@ -222,7 +214,8 @@ RUN if [ -n "${RDKIT_RELEASE}" ]; then \
         tar xzf Release_${RDKIT_RELEASE}.tar.gz && \
         ln -s rdkit-Release_${RDKIT_RELEASE} rdkit; \
     else \
-        git clone ${RDKIT_GIT_URL}.git && cd rdkit && git checkout ${RDKIT_BRANCH}; \
+        curl -L -O ${RDKIT_GIT_URL}/archive/refs/heads/${RDKIT_BRANCH}.zip && unzip ${RDKIT_BRANCH}.zip && \
+            ln -s rdkit-${RDKIT_BRANCH} rdkit; \
     fi
 WORKDIR ${SRC}/rdkit
 # Following line is to force static libz linking
@@ -243,6 +236,9 @@ RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\
     -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
     -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
     External/AvalonTools/CMakeLists.txt
+
+# Patch for Comic Neue font checksum
+RUN sed -i -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt
 
 RUN echo > win-${ARCH}.cmake -e \
     "set(CMAKE_SYSTEM_NAME Windows)\n" \
@@ -312,7 +308,6 @@ RUN tar cjf windows_ctest_exe.tar.bz2 windows_ctest_exe
 FROM scratch as export-stage
 ARG ARCH
 ARG SRC
-ARG RDKIT_RELEASE
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKit.jar /${ARCH}/org.RDKit.jar
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKitDoc.jar /${ARCH}/org.RDKitDoc.jar
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/GraphMolWrap.dll /${ARCH}/GraphMolWrap.dll
