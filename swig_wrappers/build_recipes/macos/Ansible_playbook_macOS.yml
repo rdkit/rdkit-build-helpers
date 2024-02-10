@@ -9,6 +9,7 @@
     BUILD_CONCURRENCY: 6
     MIN_MACOS_VERSION: "10.13"
     BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
+    USE_CXX11: "-std=c++11"
     RDKIT_RELEASE: "2023_09_5"
     # RDKIT_RELEASE: ""
     RDKIT_CHKSUM: "e03cf217475c69c698f2928717bb9df4"
@@ -28,8 +29,8 @@
     CMAKE_CHKSUM: "0f11cf15c7f2fa6234b9fc415c78029c"
     EIGEN_VERSION: "3.4.0"
     EIGEN_CHKSUM: "132dde48fe2b563211675626d29f1707"
-    PCRE_VERSION: "8.45"
-    PCRE_CHKSUM: "4452288e6a0eefb2ab11d36010a1eebb"
+    PCRE2_VERSION: "10.42"
+    PCRE2_CHKSUM: "c73351c42d01b264f59d14b61877b0c5"
     FREETYPE_VERSION: "2.13.2"
     FREETYPE_CHKSUM: "d99447cf00c5f2679918f66f2b5771f6"
     SWIG_VERSION: "4.2.0"
@@ -77,7 +78,7 @@
 
   - name: create work sub-directories
     ansible.builtin.shell: mkdir -p "{{ WORK }}/boost" "{{ WORK }}/cmake" "{{ WORK }}/eigen" \
-      "{{ WORK }}/zlib" "{{ WORK }}/bzip2" "{{ WORK }}/freetype" "{{ WORK }}/pcre" \
+      "{{ WORK }}/zlib" "{{ WORK }}/bzip2" "{{ WORK }}/freetype" "{{ WORK }}/pcre2" \
       "{{ WORK }}/swig" "{{ WORK }}/pkgconfig" "{{ WORK }}/cairo" "{{ WORK }}/mono" \
       "{{ DEPS_NOARCH }}/openjdk8"
 
@@ -295,44 +296,43 @@
         chdir: "{{ WORK }}/eigen/eigen-{{ EIGEN_VERSION }}/build"
     when: eigen_headers.stat.exists == false
 
-  - name: does PCRE exist?
+  - name: does PCRE2 exist?
     stat: 
-      path: "{{ DEPS }}/lib/libpcre.a"
-    register: libpcre
+      path: "{{ DEPS }}/lib/libpcre2-8.a"
+    register: libpcre2
 
-  - name: install PCRE
+  - name: install PCRE2
     block:
-    - name: download PCRE
-      ansible.builtin.shell: if [ ! -e pcre-{{ PCRE_VERSION }}.tar.bz2 ] || \
-          [ `md5 -q pcre-{{ PCRE_VERSION }}.tar.bz2` != {{ PCRE_CHKSUM }} ]; then \
-          rm -f pcre-{{ PCRE_VERSION }}.tar.bz2; \
-          for i in `seq 1 5`; do \
-            curl -L -o pcre-{{ PCRE_VERSION }}.tar.bz2 https://sourceforge.net/projects/pcre/files/pcre/{{ PCRE_VERSION }}/pcre-{{ PCRE_VERSION }}.tar.bz2/download && \
-              [ `md5 -q pcre-{{ PCRE_VERSION }}.tar.bz2` = {{ PCRE_CHKSUM }} ] && touch pcre_md5_ok && break; \
-          done; \
-          test -e pcre_md5_ok || ( >&2 echo "Failed to download PCRE" && exit 1 ); \
+    - name: download PCRE2
+      ansible.builtin.shell: if [ ! -e pcre2-{{ PCRE2_VERSION }}.tar.gz ] || \
+          [ `md5 -q pcre2-{{ PCRE2_VERSION }}.tar.gz` != {{ PCRE2_CHKSUM }} ]; then \
+          rm -f pcre2-{{ PCRE2_VERSION }}.tar.gz; \
+          curl -L -O https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-{{ PCRE2_VERSION }}.tar.gz && \
+            [ `md5 -q pcre2-{{ PCRE2_VERSION }}.tar.gz` = {{ PCRE2_CHKSUM }} ] || \
+            ( >&2 echo "Failed to download PCRE2" && exit 1 ); \
         fi
       args:
-        chdir: "{{ WORK }}/pcre"
+        chdir: "{{ WORK }}/pcre2"
 
-    - name: untar PCRE
-      ansible.builtin.shell: tar xjf pcre-{{ PCRE_VERSION }}.tar.bz2
+    - name: untar PCRE2
+      ansible.builtin.shell: tar xzf pcre2-{{ PCRE2_VERSION }}.tar.gz
       args:
-        chdir: "{{ WORK }}/pcre"
+        chdir: "{{ WORK }}/pcre2"
 
-    - name: configure PCRE
-      ansible.builtin.shell: CC="clang {{ BUILD_TARGET }}" CXX="clang++ {{ BUILD_TARGET }}" \
-        MACOSX_DEPLOYMENT_TARGET="{{ MIN_MACOS_VERSION }}" ARCHS="{{ ARCH }}" \
-        ./configure --enable-static=yes --enable-shared=no --prefix="{{ DEPS }}"
+    - name: configure PCRE2
+      ansible.builtin.shell: mkdir -p build && cd build && \
+        "{{ DEPS }}/bin/cmake" "-D CMAKE_INSTALL_PREFIX={{ DEPS }}" \
+        "-D BUILD_STATIC_LIBS=ON" "-D PCRE2_STATIC_PIC=ON" \
+        "-D CMAKE_OSX_DEPLOYMENT_TARGET={{ MIN_MACOS_VERSION }}" \
+        "-D CMAKE_OSX_ARCHITECTURES={{ ARCH }}" ..
       args:
-        chdir: "{{ WORK }}/pcre/pcre-{{ PCRE_VERSION }}"
+        chdir: "{{ WORK }}/pcre2/pcre2-pcre2-{{ PCRE2_VERSION }}"
 
-    - name: build PCRE
-      ansible.builtin.shell: make -j{{ BUILD_CONCURRENCY }} clean && \
-        make -j{{ BUILD_CONCURRENCY }} && make -j{{ BUILD_CONCURRENCY }} install
+    - name: build PCRE2
+      ansible.builtin.shell: MACOSX_DEPLOYMENT_TARGET="{{ MIN_MACOS_VERSION }}" ARCHS="{{ ARCH }}" make -j{{ BUILD_CONCURRENCY }} && make -j{{ BUILD_CONCURRENCY }} install
       args:
-        chdir: "{{ WORK }}/pcre/pcre-{{ PCRE_VERSION }}"
-    when: libpcre.stat.exists == false
+        chdir: "{{ WORK }}/pcre2/pcre2-pcre2-{{ PCRE2_VERSION }}/build"
+    when: libpcre2.stat.exists == false
 
   - name: does swig exist?
     stat: 
@@ -361,7 +361,7 @@
 
     - name: configure swig
       ansible.builtin.shell: PKG_CONFIG_PATH="{{ DEPS }}/lib/pkgconfig" PATH="{{ DEPS }}/bin:$PATH" \
-        CC="clang {{ BUILD_TARGET }}" CXX="clang++ {{ BUILD_TARGET }}" ./configure --prefix="{{ DEPS }}"
+        CC="clang {{ BUILD_TARGET }}" CXX="clang++ {{ BUILD_TARGET }} {{ USE_CXX11 }}" ./configure --prefix="{{ DEPS }}"
       args:
         chdir: "{{ WORK }}/swig/swig-{{ SWIG_VERSION }}"
 
