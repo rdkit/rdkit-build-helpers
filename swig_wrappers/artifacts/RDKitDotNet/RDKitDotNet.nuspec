@@ -3,7 +3,7 @@
   <metadata>
     <id>RDKitDotNet</id>
     <title>RDKitDotNet</title>
-    <version>2023.09.5</version>
+    <version>2024.03.3</version>
     <authors>Paolo Tosco</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="file">license.txt</license>
@@ -12,7 +12,7 @@
 	    Compiled using gcc, g++, Mono.
       Statically linked against all dependencies.
 	  </description>
-    <releaseNotes>Built from Release_2023_09_5 tag on 2024-02-08 with AvalonToolkit_2.0.6-pre.2.</releaseNotes>
+    <releaseNotes>Built from Release_2024_03_3 tag on 2024-05-31 with AvalonToolkit_2.0.6-pre.2.</releaseNotes>
     <copyright>Copyright (c) 2024 Novartis Institutes for BioMedical Research</copyright>
     <tags>rdkit linux windows macos</tags>
     <dependencies>
