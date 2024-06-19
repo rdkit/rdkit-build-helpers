@@ -659,7 +659,10 @@
           -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
           -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
           External/AvalonTools/CMakeLists.txt && \
-        sed -i ".orig" -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt
+        sed -i ".orig" -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt && \
+        sed -i ".orig" -e "s|^\( *\)\(extractStereoGroups();\)$|\1if (\!drawOptions_.addStereoAnnotation) {\n\1\1\2\n\1}|" Code/GraphMol/MolDraw2D/DrawMol.cpp && \
+        sed -i ".orig" -e "s|^\(.include <GraphMol/FileParsers/\)\(Mol\)\(Writers.h>\)$|\1File\3\n\1\2\3|" Code/JavaWrappers/MolWriters.i
+
       args:
         chdir: "{{ SRC }}/rdkit"
 

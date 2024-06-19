@@ -204,6 +204,12 @@ RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\
 # Patch for Comic Neue font checksum
 RUN sed -i -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt
 
+# Patch for duplicate enhanced stereo labels (#7543)
+RUN sed -i -e "s|^\( *\)\(extractStereoGroups();\)$|\1if (\!drawOptions_.addStereoAnnotation) {\n\1\1\2\n\1}|" Code/GraphMol/MolDraw2D/DrawMol.cpp
+
+# Patch for missing mol writing functions in RDKFuncs
+RUN sed -i -e "s|^\(.include <GraphMol/FileParsers/\)\(Mol\)\(Writers.h>\)$|\1File\3\n\1\2\3|" Code/JavaWrappers/MolWriters.i
+
 RUN mkdir build
 WORKDIR ${SRC}/rdkit/build
 RUN source ${DEVTOOLSET_PATH}/enable && FREETYPE_DIR=${DEPS} ${DEPS}/bin/cmake \
