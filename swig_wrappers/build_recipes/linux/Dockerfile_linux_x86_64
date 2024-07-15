@@ -5,10 +5,6 @@ ARG DEPS="/deps"
 ARG WORK="/work"
 ARG SRC="/src"
 ARG IMAGE="/image"
-ARG RDKIT_RELEASE="2023_03_1"
-ARG RDKIT_CHKSUM="71810c39079ece54356d73a0d2fd0474"
-ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
-#ARG RDKIT_BRANCH="minimallib"
 
 FROM docker-repo.nibr.novartis.net/docker-base-image/nx_openjdk:8-alpine AS build-stage
 
@@ -17,34 +13,30 @@ ARG DEPS
 ARG WORK
 ARG SRC
 ARG IMAGE
-ARG RDKIT_RELEASE
-ARG RDKIT_CHKSUM
-ARG RDKIT_GIT_URL
-ARG RDKIT_BRANCH
 
 USER root
 
 ARG BUILD_CONCURRENCY="6"
-ARG ZLIB_VERSION="1.2.13"
-ARG ZLIB_CHKSUM="9b8aa094c4e5765dabf4da391f00d15c"
+ARG ZLIB_VERSION="1.3.1"
+ARG ZLIB_CHKSUM="9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
 ARG BZIP2_VERSION="1.0.8"
 ARG BZIP2_CHKSUM="67e051268d0c475ea773822f7500d0e5"
-ARG BOOST_VERSION="1_80_0"
-ARG BOOST_CHKSUM="df7dc2fc6de751753198a5bf70210da7"
-ARG CMAKE_VERSION="3.24.2"
-ARG CMAKE_CHKSUM="84d08f30b110401d8178f0708c19f1fe"
+ARG BOOST_VERSION="1_83_0"
+ARG BOOST_CHKSUM="6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e"
+ARG CMAKE_VERSION="3.27.7"
+ARG CMAKE_CHKSUM="0f11cf15c7f2fa6234b9fc415c78029c"
 ARG EIGEN_VERSION="3.4.0"
 ARG EIGEN_CHKSUM="132dde48fe2b563211675626d29f1707"
-ARG FREETYPE_VERSION="2.12.1"
-ARG FREETYPE_CHKSUM="8bc5c9c9df7ac12c504f8918552a7cf2"
-ARG SWIG_VERSION="3.0.12"
-ARG SWIG_CHKSUM="82133dfa7bba75ff9ad98a7046be687c"
-ARG LIBPNG_VERSION="1.6.38"
-ARG LIBPNG_CHKSUM="151d579116e601e393e780b7f46b2ff0"
-ARG PIXMAN_VERSION="0.42.0"
-ARG PIXMAN_CHKSUM="d925aa9e9ed9d419b6c2e02a61a11d29"
+ARG FREETYPE_VERSION="2.13.2"
+ARG FREETYPE_CHKSUM="d99447cf00c5f2679918f66f2b5771f6"
+ARG SWIG_VERSION="4.2.0"
+ARG SWIG_CHKSUM="4d03374a2c30367699fa0928e1d901e8"
+ARG LIBPNG_VERSION="1.6.40"
+ARG LIBPNG_CHKSUM="8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42"
+ARG PIXMAN_VERSION="0.42.2"
+ARG PIXMAN_CHKSUM="0a4e327aef89c25f8cb474fbd01de834fd2a1b13fdf7db11ab72072082e45881cd16060673b59d02054b1711ae69c6e2395f6ae9214225ee7153939efcd2fa5d"
 ARG CAIRO_VERSION="1.16.0"
-ARG CAIRO_CHKSUM="f19e0353828269c22bd72e271243a552"
+ARG CAIRO_CHKSUM="00e81842ae5e81bb0343108884eb5205be0eac14" #sha1
 
 RUN apk add --no-cache gcc g++ make musl-dev linux-headers pcre-dev openssl-dev xz-dev
 
@@ -55,7 +47,7 @@ RUN mkdir -p ${WORK}/boost ${WORK}/cmake ${WORK}/eigen ${WORK}/zlib ${WORK}/bzip
 
 WORKDIR ${WORK}/zlib
 RUN curl -L -O https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz && \
-    [ `md5sum zlib-${ZLIB_VERSION}.tar.gz | awk '{print $1}'` = ${ZLIB_CHKSUM} ] || \
+    [ `sha256sum zlib-${ZLIB_VERSION}.tar.gz | awk '{print $1}'` = ${ZLIB_CHKSUM} ] || \
     ( >&2 echo "Failed to download zlib" && exit 1 )
 RUN tar xzf zlib-${ZLIB_VERSION}.tar.gz
 WORKDIR ${WORK}/zlib/zlib-${ZLIB_VERSION}
@@ -73,7 +65,7 @@ RUN make CC="gcc -fPIC" PREFIX=${DEPS} -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/boost
 RUN curl -L -O https://boostorg.jfrog.io/artifactory/main/release/`echo ${BOOST_VERSION} | sed "s|_|.|g"`/source/boost_${BOOST_VERSION}.tar.bz2 && \
-    [ `md5sum boost_${BOOST_VERSION}.tar.bz2 | awk '{print $1}'` = ${BOOST_CHKSUM} ] || \
+    [ `sha256sum boost_${BOOST_VERSION}.tar.bz2 | awk '{print $1}'` = ${BOOST_CHKSUM} ] || \
     ( >&2 echo "Failed to download boost" && exit 1 )
 RUN tar xjf boost_${BOOST_VERSION}.tar.bz2
 WORKDIR ${WORK}/boost/boost_${BOOST_VERSION}
@@ -121,9 +113,11 @@ RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 RUN mkdir -p ${WORK}/freetype
 WORKDIR ${WORK}/freetype
-RUN curl -L -O https://download.savannah.gnu.org/releases/freetype/freetype-${FREETYPE_VERSION}.tar.gz && \
-    [ `md5sum freetype-${FREETYPE_VERSION}.tar.gz | awk '{print $1}'` = ${FREETYPE_CHKSUM} ] || \
-    ( >&2 echo "Failed to download freetype" && exit 1 )
+RUN for i in `seq 1 5`; do \
+        curl -L -o freetype-${FREETYPE_VERSION}.tar.gz https://sourceforge.net/projects/freetype/files/freetype2/${FREETYPE_VERSION}/freetype-${FREETYPE_VERSION}.tar.gz/download && \
+        [ `md5sum freetype-${FREETYPE_VERSION}.tar.gz | awk '{print $1}'` = ${FREETYPE_CHKSUM} ] && touch freetype_md5_ok && break; \
+    done
+RUN test -e freetype_md5_ok || ( >&2 echo "Failed to download freetype" && exit 1 )
 RUN tar xzf freetype-${FREETYPE_VERSION}.tar.gz
 WORKDIR ${WORK}/freetype/freetype-${FREETYPE_VERSION}
 RUN CC="gcc -fPIC" CXX="g++ -fPIC" \
@@ -134,9 +128,9 @@ RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 WORKDIR ${WORK}/cairo
 RUN for i in `seq 1 5`; do \
         curl -L -O https://download.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.gz && \
-        [ `md5sum libpng-${LIBPNG_VERSION}.tar.gz | awk '{print $1}'` = ${LIBPNG_CHKSUM} ] && touch libpng_md5_ok && break; \
+        [ `sha256sum libpng-${LIBPNG_VERSION}.tar.gz | awk '{print $1}'` = ${LIBPNG_CHKSUM} ] && touch libpng_sha256_ok && break; \
     done
-RUN test -e libpng_md5_ok || ( >&2 echo "Failed to download libpng" && exit 1 )
+RUN test -e libpng_sha256_ok || ( >&2 echo "Failed to download libpng" && exit 1 )
 RUN tar xzf libpng-${LIBPNG_VERSION}.tar.gz
 WORKDIR ${WORK}/cairo/libpng-${LIBPNG_VERSION}
 RUN CC="gcc -fPIC -I${DEPS}/include" \
@@ -147,7 +141,7 @@ RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/cairo
 RUN curl -L -O https://www.cairographics.org/releases/pixman-${PIXMAN_VERSION}.tar.gz && \
-    [ `md5sum pixman-${PIXMAN_VERSION}.tar.gz | awk '{print $1}'` = ${PIXMAN_CHKSUM} ] || \
+    [ `sha512sum pixman-${PIXMAN_VERSION}.tar.gz | awk '{print $1}'` = ${PIXMAN_CHKSUM} ] || \
     ( >&2 echo "Failed to download pixman" && exit 1 )
 RUN tar xzf pixman-${PIXMAN_VERSION}.tar.gz
 WORKDIR ${WORK}/cairo/pixman-${PIXMAN_VERSION}
@@ -158,7 +152,7 @@ RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${WORK}/cairo
 RUN curl -L -O https://www.cairographics.org/releases/cairo-${CAIRO_VERSION}.tar.xz && \
-    [ `md5sum cairo-${CAIRO_VERSION}.tar.xz | awk '{print $1}'` = ${CAIRO_CHKSUM} ] || \
+    [ `sha1sum cairo-${CAIRO_VERSION}.tar.xz | awk '{print $1}'` = ${CAIRO_CHKSUM} ] || \
     ( >&2 echo "Failed to download cairo" && exit 1 )
 RUN tar xJf cairo-${CAIRO_VERSION}.tar.xz
 WORKDIR ${WORK}/cairo/cairo-${CAIRO_VERSION}
@@ -169,6 +163,10 @@ RUN CC="gcc -fPIC -I${DEPS}/include" CXX="g++ -fPIC -I${DEPS}/include" \
 RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${SRC}
+ARG RDKIT_RELEASE="2024_03_4"
+ARG RDKIT_CHKSUM="3c82988c84934732b51ab702a4bfb749"
+ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
+ARG RDKIT_BRANCH="master"
 RUN if [ -n "${RDKIT_RELEASE}" ]; then \
         curl -L -O ${RDKIT_GIT_URL}/archive/refs/tags/Release_${RDKIT_RELEASE}.tar.gz && \
             [ `md5sum Release_${RDKIT_RELEASE}.tar.gz | awk '{print $1}'` = ${RDKIT_CHKSUM} ] || \
@@ -176,7 +174,8 @@ RUN if [ -n "${RDKIT_RELEASE}" ]; then \
         tar xzf Release_${RDKIT_RELEASE}.tar.gz && \
         ln -s rdkit-Release_${RDKIT_RELEASE} rdkit; \
     else \
-        git clone ${RDKIT_GIT_URL}.git && cd rdkit && git checkout ${RDKIT_BRANCH}; \
+        curl -L -O ${RDKIT_GIT_URL}/archive/refs/heads/${RDKIT_BRANCH}.zip && unzip ${RDKIT_BRANCH}.zip && \
+            ln -s rdkit-${RDKIT_BRANCH} rdkit; \
     fi
 WORKDIR ${SRC}/rdkit
 RUN sed -i -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo\)|\1target_include_directories(MolDraw2D PUBLIC ${DEPS}/include/cairo)\n\1\2 ${DEPS}/lib/libcairo.a ${DEPS}/lib/libpixman-1.a ${DEPS}/lib/libpng16.a|" \
@@ -185,10 +184,25 @@ RUN sed -i -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo
 RUN sed -i "s|^\( *set(RDKit_SERIALIZATION_LIBS *\${Boost_SERIALIZATION_LIBRARY}\)\()\)|\1 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a\2|" \
     Code/GraphMol/ChemReactions/CMakeLists.txt
 RUN sed -i -e "s|if(WIN32)|if(FALSE)|" \
-    -e "s|\(SWIG_LINK_LIBRARIES *( *\)\(GraphMolWrap *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n\1\2-static-libgcc -static-libstdc++ \3|" \
+    -e "s|\(SWIG_LINK_LIBRARIES *( *\)\(GraphMolWrap *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n\1\2 \3|" \
     Code/JavaWrappers/gmwrapper/CMakeLists.txt
-RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n\1\2-static-libgcc -static-libstdc++ \3|" \
+RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n\1\2 \3|" \
     Code/JavaWrappers/csharp_wrapper/CMakeLists.txt
+
+# Patch for Avalon
+RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\"e968b96d7d37677065901b28978fa095\"|" \
+    -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
+    -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
+    External/AvalonTools/CMakeLists.txt
+
+# Patch for Comic Neue font checksum
+RUN sed -i -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt
+
+# Patch for duplicate enhanced stereo labels (#7543)
+RUN sed -i -e "s|^\( *\)\(extractStereoGroups();\)$|\1if (\!drawOptions_.addStereoAnnotation) {\n\1\1\2\n\1}|" Code/GraphMol/MolDraw2D/DrawMol.cpp
+
+# Patch for missing mol writing functions in RDKFuncs
+RUN sed -i -e "s|^\(.include <GraphMol/FileParsers/\)\(Mol\)\(Writers.h>\)$|\1File\3\n\1\2\3|" Code/JavaWrappers/MolWriters.i
 
 RUN mkdir build
 WORKDIR ${SRC}/rdkit/build
@@ -231,7 +245,6 @@ RUN RDBASE=${SRC}/rdkit ${DEPS}/bin/ctest
 FROM scratch as export-stage
 ARG ARCH
 ARG SRC
-ARG RDKIT_RELEASE
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKit.jar /${ARCH}/org.RDKit.jar
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/org.RDKitDoc.jar /${ARCH}/org.RDKitDoc.jar
 COPY --from=build-stage ${SRC}/rdkit/Code/JavaWrappers/gmwrapper/libGraphMolWrap.so /${ARCH}/libGraphMolWrap.so
