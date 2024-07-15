@@ -38,7 +38,7 @@ ARG PIXMAN_CHKSUM="0a4e327aef89c25f8cb474fbd01de834fd2a1b13fdf7db11ab72072082e45
 ARG CAIRO_VERSION="1.16.0"
 ARG CAIRO_CHKSUM="00e81842ae5e81bb0343108884eb5205be0eac14" #sha1
 
-RUN apk add --no-cache gcc g++ make musl-dev linux-headers pcre-dev openssl-dev xz-dev
+RUN apk add --no-cache gcc g++ make musl-dev linux-headers pcre-dev pcre2-dev git openssl-dev xz-dev
 
 RUN mkdir ${SRC} ${WORK} ${IMAGE} ${DEPS} && \
     chown -R docker:docker ${SRC} ${WORK} ${IMAGE} ${DEPS}
