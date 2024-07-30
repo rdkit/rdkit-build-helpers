@@ -246,6 +246,19 @@ RUN sed -i -e "s|^\( *\)\(extractStereoGroups();\)$|\1if (\!drawOptions_.addSter
 # Patch for missing mol writing functions in RDKFuncs
 RUN sed -i -e "s|^\(.include <GraphMol/FileParsers/\)\(Mol\)\(Writers.h>\)$|\1File\3\n\1\2\3|" Code/JavaWrappers/MolWriters.i
 
+# Patch for missing ROMol methods related to bond wedging
+RUN sed -i -e "s|^\( *\)\(void ClearSingleBondDirFlags().*\)$|\
+\1void reapplyMolBlockWedging() {\n\
+\1\1RDKit::Chirality::reapplyMolBlockWedging(*(\$self));\n\
+\1}\n\
+\1void clearMolBlockWedgingInfo() {\n\
+\1\1RDKit::Chirality::clearMolBlockWedgingInfo(*(\$self));\n\
+\1}\n\
+\1void invertMolBlockWedgingInfo() {\n\
+\1\1RDKit::Chirality::invertMolBlockWedgingInfo(*(\$self));\n\
+\1}\n\
+\1\2|" Code/JavaWrappers/ROMol.i
+
 RUN echo > win-${ARCH}.cmake -e \
     "set(CMAKE_SYSTEM_NAME Windows)\n" \
     "set(CMAKE_SYSTEM_VERSION 1)\n" \
