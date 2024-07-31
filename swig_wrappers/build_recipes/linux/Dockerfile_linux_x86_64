@@ -38,8 +38,77 @@ ARG CAIRO_VERSION="1.16.0"
 ARG CAIRO_CHKSUM="00e81842ae5e81bb0343108884eb5205be0eac14" #sha1
 ARG DEVTOOLSET_PATH="/opt/rh/devtoolset-11"
 
+RUN echo -e "\
+[base]\n\
+name=CentOS-\$releasever - Base\n\
+baseurl=http://vault.centos.org/7.9.2009/os/\$basearch/\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7\n\
+\n\
+[updates]\n\
+name=CentOS-\$releasever - Updates\n\
+baseurl=http://vault.centos.org/7.9.2009/updates/\$basearch/\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7\n\
+\n\
+[extras]\n\
+name=CentOS-\$releasever - Extras\n\
+baseurl=http://vault.centos.org/7.9.2009/extras/\$basearch/\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7\n\
+\n\
+[centosplus]\n\
+name=CentOS-\$releasever - Plus\n\
+baseurl=http://vault.centos.org/7.9.2009/centosplus/\$basearch/\n\
+gpgcheck=1\n\
+enabled=0\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7\n\
+\n\
+[contrib]\n\
+name=CentOS-\$releasever - Contrib\n\
+baseurl=http://vault.centos.org/7.9.2009/contrib/\$basearch/\n\
+gpgcheck=1\n\
+enabled=0\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7\
+" > /etc/yum.repos.d/CentOS-Base.repo
 RUN yum update -y
-RUN yum install -y centos-release-scl
+RUN echo -e "\
+\n\
+[centos-sclo-rh]\n\
+name=CentOS-\$releasever - SCLo rh\n\
+baseurl=http://vault.centos.org/centos/7.9.2009/sclo/\$basearch/rh/\n\
+gpgcheck=1\n\
+enabled=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo\n\
+\n\
+[centos-sclo-sclo]\n\
+name=CentOS-\$releasever - SCLo sclo\n\
+baseurl=http://vault.centos.org/centos/7.9.2009/sclo/\$basearch/sclo/\n\
+gpgcheck=1\n\
+enabled=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo\
+" >> /etc/yum.repos.d/CentOS-Base.repo
+RUN echo -e "\
+-----BEGIN PGP PUBLIC KEY BLOCK-----\n\
+Version: GnuPG v2.0.22 (GNU/Linux)\n\
+ \n\
+mQENBFYM/AoBCADR9Q5cb+H5ndx+QkzNBQ88wcD+g112yvnHNlSiBMOnNEGHuKPJ\n\
+tujZ+eWXP3K6ucJckT91WxfQ2fxPr9jQ0xpZytcHcZdTfn3vKL9+OwR0npp+qmcz\n\
+rK8/EzVz/SWSgBQ5xT/HUvaeoVAbzBHSng0r2njnBAqABKAoTxgyRGKSCWduKD32\n\
+7PF2ZpqeDFFhd99Ykt6ar8SlV8ToqH6F7An0ILeejINVbHUxd6+wsbpcOwQ4mGAa\n\
+/CPXeqqLGj62ASBv36xQr34hlN/9zQMViaKkacl8zkuvwhuHf4b4VlGVCe6VILpQ\n\
+8ytKMV/lcg7YpMfRq4KVWBjCwkvk6zg6KxaHABEBAAG0aENlbnRPUyBTb2Z0d2Fy\n\
+ZUNvbGxlY3Rpb25zIFNJRyAoaHR0cHM6Ly93aWtpLmNlbnRvcy5vcmcvU3BlY2lh\n\
+bEludGVyZXN0R3JvdXAvU0NMbykgPHNlY3VyaXR5QGNlbnRvcy5vcmc+iQE5BBMB\n\
+CgAjAhsDBwsJCAcDAgEGFQgCCQoLBBYCAwECHgECF4AFAmIgbg0ACgkQTrhOcfLu\n\
+nVUzkAgAgJSl++PWo69OGI8eUn53whhfJ6ZyKCOyI9+Flghtfwq1mdcP4dIoAubw\n\
+nlQcvEsE4Erob2I1S+n/dXYh9y2+Si3HdXRreKzC1rCSG5ebYRrEqeMoJhBoDFSd\n\
+xydtxi03l+Dh2iWtLtXpAM85qHvgIrPfdUnLRVbDBT52Ph5igZl8ux2ooJ94CPm4\n\
+yTG/0aPIebNQsLP8LEpa2wad2WJfIeFgjEHranWIzhzapGgwyf2Iu9Sz3L8ljiz2\n\
+2HixHpI2es3IqgLyRsTBo2/EdbvMJWlFwiESe1UQIW6ObKNnVabIHUAxZgOlj59o\n\
+JhPOzTBG+Ma2fLs+ZFBV88cpKdctFQ==\n\
+=+Gr2\n\
+-----END PGP PUBLIC KEY BLOCK-----" > /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo
 RUN yum install -y devtoolset-11 bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel patch git pcre2-devel
 
 RUN curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo
