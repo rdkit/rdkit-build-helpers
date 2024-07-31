@@ -662,17 +662,7 @@
         sed -i ".orig" -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt && \
         sed -i ".orig" -e "s|^\( *\)\(extractStereoGroups();\)$|\1if (\!drawOptions_.addStereoAnnotation) {\n\1\1\2\n\1}|" Code/GraphMol/MolDraw2D/DrawMol.cpp && \
         sed -i ".orig" -e "s|^\(.include <GraphMol/FileParsers/\)\(Mol\)\(Writers.h>\)$|\1File\3\n\1\2\3|" Code/JavaWrappers/MolWriters.i && \
-        sed -i ".orig" -e "s|^\( *\)\(void ClearSingleBondDirFlags().*\)$|\
-\1void reapplyMolBlockWedging() {\n\
-\1\1RDKit::Chirality::reapplyMolBlockWedging(*(\$self));\n\
-\1}\n\
-\1void clearMolBlockWedgingInfo() {\n\
-\1\1RDKit::Chirality::clearMolBlockWedgingInfo(*(\$self));\n\
-\1}\n\
-\1void invertMolBlockWedgingInfo() {\n\
-\1\1RDKit::Chirality::invertMolBlockWedgingInfo(*(\$self));\n\
-\1}\n\
-\1\2|" Code/JavaWrappers/ROMol.i
+        sed -i ".orig" -e "s|^\( *\)\(void ClearSingleBondDirFlags().*\)$|\1void reapplyMolBlockWedging() {\n\1\1RDKit::Chirality::reapplyMolBlockWedging(*(\$self));\n\1}\n\1void clearMolBlockWedgingInfo() {\n\1\1RDKit::Chirality::clearMolBlockWedgingInfo(*(\$self));\n\1}\n\1void invertMolBlockWedgingInfo() {\n\1\1RDKit::Chirality::invertMolBlockWedgingInfo(*(\$self));\n\1}\n\1\2|" Code/JavaWrappers/ROMol.i
 
       args:
         chdir: "{{ SRC }}/rdkit"
