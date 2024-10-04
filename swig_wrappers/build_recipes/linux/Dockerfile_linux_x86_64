@@ -20,6 +20,8 @@ ARG ZLIB_VERSION="1.3.1"
 ARG ZLIB_CHKSUM="9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
 ARG BZIP2_VERSION="1.0.8"
 ARG BZIP2_CHKSUM="67e051268d0c475ea773822f7500d0e5"
+ARG LZMA_VERSION="5.6.3"
+ARG LZMA_CHKSUM="e7f2caec3e4951673942f45cbf706797"
 ARG BOOST_VERSION="1_83_0"
 ARG BOOST_CHKSUM="6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e"
 ARG CMAKE_VERSION="3.27.7"
@@ -120,8 +122,8 @@ RUN groupadd -g 1005 docker && \
     chown -R docker:docker ${SRC} ${WORK} ${IMAGE} ${DEPS}
 RUN mkdir -p /home/docker && chown docker:docker /home/docker
 USER docker
-RUN mkdir -p ${WORK}/boost ${WORK}/cmake ${WORK}/eigen ${WORK}/zlib ${WORK}/bzip2 ${WORK}/freetype ${WORK}/swig ${WORK}/cairo
 
+RUN mkdir -p ${WORK}/zlib
 WORKDIR ${WORK}/zlib
 RUN curl -L -O https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz && \
     [ `sha256sum zlib-${ZLIB_VERSION}.tar.gz | awk '{print $1}'` = ${ZLIB_CHKSUM} ] || \
@@ -131,6 +133,7 @@ WORKDIR ${WORK}/zlib/zlib-${ZLIB_VERSION}
 RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" ./configure --static --64 --prefix=${DEPS}
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
+RUN mkdir -p ${WORK}/bzip2
 WORKDIR ${WORK}/bzip2
 RUN curl -L -O https://sourceware.org/pub/bzip2/bzip2-${BZIP2_VERSION}.tar.gz && \
     [ `md5sum bzip2-${BZIP2_VERSION}.tar.gz | awk '{print $1}'` = ${BZIP2_CHKSUM} ] || \
@@ -140,20 +143,37 @@ WORKDIR ${WORK}/bzip2/bzip2-${BZIP2_VERSION}
 RUN source ${DEVTOOLSET_PATH}/enable && make CC="gcc -fPIC" PREFIX=${DEPS} -j${BUILD_CONCURRENCY}
 RUN source ${DEVTOOLSET_PATH}/enable && make CC="gcc -fPIC" PREFIX=${DEPS} -j${BUILD_CONCURRENCY} install
 
+RUN mkdir -p ${WORK}/lzma
+WORKDIR ${WORK}/lzma
+RUN curl -L -O https://github.com/tukaani-project/xz/releases/download/v${LZMA_VERSION}/xz-${LZMA_VERSION}.tar.gz && \
+    [ `md5sum xz-${LZMA_VERSION}.tar.gz | awk '{print $1}'` = ${LZMA_CHKSUM} ] || \
+    ( >&2 echo "Failed to download xz" && exit 1 )
+RUN tar xzf xz-${LZMA_VERSION}.tar.gz
+WORKDIR ${WORK}/lzma/xz-${LZMA_VERSION}
+RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" ./configure --enable-shared=no --enable-static=yes --prefix=${DEPS}
+RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
+
+RUN mkdir -p ${WORK}/boost
 WORKDIR ${WORK}/boost
 RUN curl -L -O https://boostorg.jfrog.io/artifactory/main/release/`echo ${BOOST_VERSION} | sed "s|_|.|g"`/source/boost_${BOOST_VERSION}.tar.bz2 && \
     [ `sha256sum boost_${BOOST_VERSION}.tar.bz2 | awk '{print $1}'` = ${BOOST_CHKSUM} ] || \
     ( >&2 echo "Failed to download boost" && exit 1 )
 RUN tar xjf boost_${BOOST_VERSION}.tar.bz2
 WORKDIR ${WORK}/boost/boost_${BOOST_VERSION}
-RUN source ${DEVTOOLSET_PATH}/enable && ./bootstrap.sh --with-libraries=serialization,iostreams,regex,system --without-icu --prefix=${DEPS}
+RUN source ${DEVTOOLSET_PATH}/enable && ./bootstrap.sh --with-libraries=serialization,iostreams,regex,system,program_options --without-icu --prefix=${DEPS}
 RUN source ${DEVTOOLSET_PATH}/enable && \
-    ./b2 cflags=-fPIC cxxflags=-fPIC --prefix=${WORK}/boost/install variant=release link=static \
-        --with-serialization --with-iostreams --with-regex --with-system \
-        -sBZIP2_INCLUDE=${DEPS}/include -sBZIP2_LIBPATH=${DEPS}/lib \
-        -sZLIB_INCLUDE=${DEPS}/include -sZLIB_LIBPATH=${DEPS}/lib && \
-        cp -R stage/lib ${DEPS} && cp -R boost ${DEPS}/include
+    ./b2 cflags=-fPIC cxxflags=-fPIC --prefix=${DEPS} variant=release link=static \
+        --with-serialization --with-iostreams --with-regex --with-system --with-program_options \
+        -sBZIP2_INCLUDE=${DEPS}/include -sBZIP2_LIBRARY_PATH=${DEPS}/lib \
+        -sZLIB_INCLUDE=${DEPS}/include -sZLIB_LIBRARY_PATH=${DEPS}/lib \
+        -sLZMA_INCLUDE=${DEPS}/include -sLZMA_LIBRARY_PATH=${DEPS}/lib \
+        install
+# change bz2 lzma z into /deps/lib/libbz2.a /deps/lib/liblzma.a /deps/lib/libz.a
+# to avoid libboost_iostreams link errors downstream
+RUN sed -i "s/\([ :;]\)\(bz2\|lzma\|z\)/\1\${_BOOST_LIBDIR}\/lib\2.a/g" \
+    ${DEPS}/lib/cmake/boost_iostreams-`echo -n ${BOOST_VERSION} | tr _ .`/libboost_iostreams-variant-static.cmake
 
+RUN mkdir -p ${WORK}/cmake
 WORKDIR ${WORK}/cmake
 RUN curl -L -O https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
     [ `md5sum cmake-${CMAKE_VERSION}.tar.gz | awk '{print $1}'` = ${CMAKE_CHKSUM} ] || \
@@ -163,6 +183,7 @@ WORKDIR ${WORK}/cmake/cmake-${CMAKE_VERSION}
 RUN source ${DEVTOOLSET_PATH}/enable && ./bootstrap --prefix=${DEPS} --parallel=${BUILD_CONCURRENCY}
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
+RUN mkdir -p ${WORK}/eigen
 WORKDIR ${WORK}/eigen
 RUN curl -L -o eigen-${EIGEN_VERSION}.tar.bz2 https://gitlab.com/libeigen/eigen/-/archive/${EIGEN_VERSION}/eigen-${EIGEN_VERSION}.tar.bz2 && \
     [ `md5sum eigen-${EIGEN_VERSION}.tar.bz2 | awk '{print $1}'` = ${EIGEN_CHKSUM} ] || \
@@ -202,6 +223,7 @@ RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" CXX="g++ -fPIC" \
     ./configure --enable-static=yes --enable-shared=no --prefix=${DEPS}
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
+RUN mkdir -p ${WORK}/cairo
 WORKDIR ${WORK}/cairo
 RUN for i in `seq 1 5`; do \
         curl -L -O https://download.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.gz && \
@@ -238,8 +260,8 @@ RUN source ${DEVTOOLSET_PATH}/enable && CC="gcc -fPIC" CXX="g++ -fPIC" \
 RUN source ${DEVTOOLSET_PATH}/enable && make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${SRC}
-ARG RDKIT_RELEASE="2024_03_4"
-ARG RDKIT_CHKSUM="3c82988c84934732b51ab702a4bfb749"
+ARG RDKIT_RELEASE="2024_09_1"
+ARG RDKIT_CHKSUM="e3ee5e05730be784ccfcd9b862297258"
 ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
 ARG RDKIT_BRANCH="master"
 RUN if [ -n "${RDKIT_RELEASE}" ]; then \
@@ -254,14 +276,14 @@ RUN if [ -n "${RDKIT_RELEASE}" ]; then \
     fi
 WORKDIR ${SRC}/rdkit
 RUN sed -i -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(Cairo::Cairo\)|\1target_include_directories(MolDraw2D PUBLIC ${DEPS}/include/cairo)\n\1\2 ${DEPS}/lib/libcairo.a ${DEPS}/lib/libpixman-1.a ${DEPS}/lib/libpng16.a|" \
-    -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(.*\)\()\)|\1\2\3 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a\4|" \
+    -e "s|\( *\)\(target_link_libraries(MolDraw2D PUBLIC \)\(.*\)\()\)|\1\2\3 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a ${DEPS}/lib/liblzma.a\4|" \
     Code/GraphMol/MolDraw2D/CMakeLists.txt
-RUN sed -i "s|^\( *set(RDKit_SERIALIZATION_LIBS *\${Boost_SERIALIZATION_LIBRARY}\)\()\)|\1 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a\2|" \
+RUN sed -i "s|^\( *set(RDKit_SERIALIZATION_LIBS *\${Boost_SERIALIZATION_LIBRARY}\)\()\)|\1 ${DEPS}/lib/libz.a ${DEPS}/lib/libbz2.a ${DEPS}/lib/liblzma.a\2|" \
     Code/GraphMol/ChemReactions/CMakeLists.txt
 RUN sed -i -e "s|if(WIN32)|if(FALSE)|" \
-    -e "s|\(SWIG_LINK_LIBRARIES *( *\)\(GraphMolWrap *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n\1\2 \3|" \
+    -e "s|\(SWIG_LINK_LIBRARIES *( *\)\(GraphMolWrap *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a;${DEPS}/lib/liblzma.a\")\n\1\2 \3|" \
     Code/JavaWrappers/gmwrapper/CMakeLists.txt
-RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a\")\n\1\2 \3|" \
+RUN sed -i "s|\(SWIG_LINK_LIBRARIES *( *\)\(RDKFuncs *\)\(\${RDKit_Wrapper_Libs}\)|set(RDKit_Wrapper_Libs \"-Wl,--no-undefined;\${RDKit_Wrapper_Libs};${DEPS}/lib/libcairo.a;${DEPS}/lib/libpixman-1.a;${DEPS}/lib/libpng16.a;${DEPS}/lib/libz.a;${DEPS}/lib/libbz2.a;${DEPS}/lib/liblzma.a\")\n\1\2 \3|" \
     Code/JavaWrappers/csharp_wrapper/CMakeLists.txt
 
 # Patch for Avalon
@@ -269,28 +291,6 @@ RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\
     -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
     -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
     External/AvalonTools/CMakeLists.txt
-
-# Patch for Comic Neue font checksum
-RUN sed -i -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt
-
-# Patch for duplicate enhanced stereo labels (#7543)
-RUN sed -i -e "s|^\( *\)\(extractStereoGroups();\)$|\1if (\!drawOptions_.addStereoAnnotation) {\n\1\1\2\n\1}|" Code/GraphMol/MolDraw2D/DrawMol.cpp
-
-# Patch for missing mol writing functions in RDKFuncs
-RUN sed -i -e "s|^\(.include <GraphMol/FileParsers/\)\(Mol\)\(Writers.h>\)$|\1File\3\n\1\2\3|" Code/JavaWrappers/MolWriters.i
-
-# Patch for missing ROMol methods related to bond wedging
-RUN sed -i -e "s|^\( *\)\(void ClearSingleBondDirFlags().*\)$|\
-\1void reapplyMolBlockWedging() {\n\
-\1\1RDKit::Chirality::reapplyMolBlockWedging(*(\$self));\n\
-\1}\n\
-\1void clearMolBlockWedgingInfo() {\n\
-\1\1RDKit::Chirality::clearMolBlockWedgingInfo(*(\$self));\n\
-\1}\n\
-\1void invertMolBlockWedgingInfo() {\n\
-\1\1RDKit::Chirality::invertMolBlockWedgingInfo(*(\$self));\n\
-\1}\n\
-\1\2|" Code/JavaWrappers/ROMol.i
 
 RUN mkdir build
 WORKDIR ${SRC}/rdkit/build
@@ -310,10 +310,9 @@ RUN source ${DEVTOOLSET_PATH}/enable && FREETYPE_DIR=${DEPS} ${DEPS}/bin/cmake \
     -D RDK_USE_BOOST_SERIALIZATION=ON \
     -D RDK_BUILD_CPP_TESTS=ON \
     -D RDK_BUILD_PGSQL=OFF \
-    -D Boost_INCLUDE_DIR=${DEPS}/include \
-    -D Boost_LIBRARY_DIR=${DEPS}/lib \
     -D Boost_NO_SYSTEM_PATHS=ON \
-    -D Boost_NO_BOOST_CMAKE=ON \
+    -D BOOST_INCLUDEDIR=${DEPS}/include \
+    -D BOOST_LIBRARYDIR=${DEPS}/lib \
     -D Boost_USE_STATIC_LIBS=ON \
     -D CMAKE_BUILD_TYPE=Release \
     -D EIGEN3_INCLUDE_DIR=${DEPS}/include/eigen3 \

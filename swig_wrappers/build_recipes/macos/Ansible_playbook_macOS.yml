@@ -10,9 +10,9 @@
     MIN_MACOS_VERSION: "10.13"
     BUILD_TARGET: "-mmacosx-version-min={{ MIN_MACOS_VERSION }} -arch {{ ARCH }}"
     USE_CXX11: "-std=c++11"
-    RDKIT_RELEASE: "2024_03_4"
+    RDKIT_RELEASE: "2024_09_1"
     # RDKIT_RELEASE: ""
-    RDKIT_CHKSUM: "3c82988c84934732b51ab702a4bfb749"
+    RDKIT_CHKSUM: "e3ee5e05730be784ccfcd9b862297258"
     # RDKIT_CHKSUM: ""
     RDKIT_GIT_URL: "https://github.com/rdkit/rdkit"
     # RDKIT_BRANCH: "master"
@@ -23,6 +23,8 @@
     ZLIB_CHKSUM: "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
     BZIP2_VERSION: "1.0.8"
     BZIP2_CHKSUM: "67e051268d0c475ea773822f7500d0e5"
+    LZMA_VERSION: "5.6.3"
+    LZMA_CHKSUM: "e7f2caec3e4951673942f45cbf706797"
     BOOST_VERSION: "1_83_0"
     BOOST_CHKSUM: "6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e"
     CMAKE_VERSION: "3.27.7"
@@ -78,12 +80,12 @@
 
   - name: create work sub-directories
     ansible.builtin.shell: mkdir -p "{{ WORK }}/boost" "{{ WORK }}/cmake" "{{ WORK }}/eigen" \
-      "{{ WORK }}/zlib" "{{ WORK }}/bzip2" "{{ WORK }}/freetype" "{{ WORK }}/pcre2" \
+      "{{ WORK }}/zlib" "{{ WORK }}/bzip2" "{{ WORK }}/lzma" "{{ WORK }}/freetype" "{{ WORK }}/pcre2" \
       "{{ WORK }}/swig" "{{ WORK }}/pkgconfig" "{{ WORK }}/cairo" "{{ WORK }}/mono" \
       "{{ DEPS_NOARCH }}/openjdk8"
 
   - name: does pkg-config exist?
-    stat: 
+    stat:
       path: "{{ DEPS }}/bin/pkg-config"
     register: pkgconfig_exe
 
@@ -183,6 +185,40 @@
         chdir: "{{ WORK }}/bzip2/bzip2-{{ BZIP2_VERSION }}"
     when: libbz2.stat.exists == false
 
+  - name: does lzma exist?
+    stat:
+      path: "{{ DEPS }}/lib/liblzma.a"
+    register: liblzma
+
+  - name: install lzma
+    block:
+    - name: download lzma
+      ansible.builtin.shell: if [ ! -e xz-{{ LZMA_VERSION }}.tar.gz ] || \
+          [ `md5 -q xz-{{ LZMA_VERSION }}.tar.gz | awk "{print \\$1}"` != {{ LZMA_CHKSUM }} ]; then \
+          rm -f xz-{{ LZMA_VERSION }}.tar.gz; \
+          curl -L -O https://github.com/tukaani-project/xz/releases/download/v{{ LZMA_VERSION }}/xz-{{ LZMA_VERSION }}.tar.gz && \
+            [ `md5 -q xz-{{ LZMA_VERSION }}.tar.gz | awk "{print \\$1}"` = {{ LZMA_CHKSUM }} ] || \
+            ( >&2 echo "Failed to download lzma" && exit 1 ); \
+        fi
+      args:
+        chdir: "{{ WORK }}/lzma"
+
+    - name: untar lzma
+      ansible.builtin.shell: tar xzf xz-{{ LZMA_VERSION }}.tar.gz
+      args:
+        chdir: "{{ WORK }}/lzma"
+
+    - name: configure lzma
+      ansible.builtin.shell: CC="clang -fPIC {{ BUILD_TARGET }}" ./configure --enable-shared=no --enable-static=yes --prefix="{{ DEPS }}"
+      args:
+        chdir: "{{ WORK }}/lzma/xz-{{ LZMA_VERSION }}"
+
+    - name: build lzma
+      ansible.builtin.shell: make -j{{ BUILD_CONCURRENCY }} clean && make -j{{ BUILD_CONCURRENCY }} && make -j{{ BUILD_CONCURRENCY }} install
+      args:
+        chdir: "{{ WORK }}/lzma/xz-{{ LZMA_VERSION }}"
+    when: liblzma.stat.exists == false
+
   - name: does boost exist?
     stat: 
       path: "{{ DEPS }}/lib/libboost_system.a"
@@ -208,18 +244,23 @@
 
     - name: bootstrap boost
       ansible.builtin.shell: MACOSX_DEPLOYMENT_TARGET="{{ MIN_MACOS_VERSION }}" ARCHS="{{ ARCH }}" ./bootstrap.sh \
-        --with-libraries=serialization,iostreams,regex,system --without-icu --prefix="{{ DEPS }}"
+        --with-libraries=serialization,iostreams,regex,system,program_options --without-icu --prefix="{{ DEPS }}"
       args:
         chdir: "{{ WORK }}/boost/boost_{{ BOOST_VERSION }}"
 
     - name: bjam boost
       ansible.builtin.shell: MACOSX_DEPLOYMENT_TARGET="{{ MIN_MACOS_VERSION }}" ARCHS="{{ ARCH }}" \
         ./b2 cflags="-fPIC {{ BUILD_TARGET }}" cxxflags="-fPIC {{ BUILD_TARGET }}" \
-          --prefix="{{ WORK }}/boost/install" variant=release link=static \
-          --with-serialization --with-iostreams --with-regex --with-system \
-          -sBZIP2_INCLUDE="{{ DEPS }}/include" -sBZIP2_LIBPATH="{{ DEPS }}/lib" \
-          -sZLIB_INCLUDE="{{ DEPS }}/include" -sZLIB_LIBPATH="{{ DEPS }}/lib" && \
-        cp -R stage/lib "{{ DEPS }}" && cp -R boost "{{ DEPS }}/include"
+          --prefix="{{ DEPS }}" variant=release link=static \
+          --with-serialization --with-iostreams --with-regex --with-system --with-program_options \
+          -sBZIP2_INCLUDE="{{ DEPS }}/include" -sBZIP2_LIBRARY_PATH="{{ DEPS }}/lib" \
+          -sZLIB_INCLUDE="{{ DEPS }}/include" -sZLIB_LIBRARY_PATH="{{ DEPS }}/lib" && \
+          -sLZMA_INCLUDE="{{ DEPS }}/include" -sLZMA_LIBRARY_PATH="{{ DEPS }}/lib" && \
+          install && \
+          # change bz2 lzma z into /deps/lib/libbz2.a /deps/lib/liblzma.a /deps/lib/libz.a
+          # to avoid libboost_iostreams link errors downstream
+          sed -i ".orig" "s/\([ :;]\)\(bz2\|lzma\|z\)/\1\${_BOOST_LIBDIR}\/lib\2.a/g" \
+              {{ DEPS }}/lib/cmake/boost_iostreams-`echo -n {{ BOOST_VERSION }} | tr _ .`/libboost_iostreams-variant-static.cmake
       args:
         chdir: "{{ WORK }}/boost/boost_{{ BOOST_VERSION }}"
     when: libboost.stat.exists == false
@@ -658,11 +699,7 @@
         sed -i ".orig" -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\"e968b96d7d37677065901b28978fa095\"|" \
           -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
           -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
-          External/AvalonTools/CMakeLists.txt && \
-        sed -i ".orig" -e "s|850b0df852f1cda4970887b540f8f333|b7fd0df73ad4637504432d72a0accb8f|" Code/GraphMol/MolDraw2D/CMakeLists.txt && \
-        sed -i ".orig" -e "s|^\( *\)\(extractStereoGroups();\)$|\1if (\!drawOptions_.addStereoAnnotation) {\n\1\1\2\n\1}|" Code/GraphMol/MolDraw2D/DrawMol.cpp && \
-        sed -i ".orig" -e "s|^\(.include <GraphMol/FileParsers/\)\(Mol\)\(Writers.h>\)$|\1File\3\n\1\2\3|" Code/JavaWrappers/MolWriters.i && \
-        sed -i ".orig" -e "s|^\( *\)\(void ClearSingleBondDirFlags().*\)$|\1void reapplyMolBlockWedging() {\n\1\1RDKit::Chirality::reapplyMolBlockWedging(*(\$self));\n\1}\n\1void clearMolBlockWedgingInfo() {\n\1\1RDKit::Chirality::clearMolBlockWedgingInfo(*(\$self));\n\1}\n\1void invertMolBlockWedgingInfo() {\n\1\1RDKit::Chirality::invertMolBlockWedgingInfo(*(\$self));\n\1}\n\1\2|" Code/JavaWrappers/ROMol.i
+          External/AvalonTools/CMakeLists.txt
 
       args:
         chdir: "{{ SRC }}/rdkit"
@@ -693,10 +730,9 @@
           -D RDK_USE_BOOST_SERIALIZATION=ON \
           -D RDK_BUILD_CPP_TESTS=ON \
           -D RDK_BUILD_PGSQL=OFF \
-          -D Boost_INCLUDE_DIR="{{ DEPS }}/include" \
-          -D Boost_LIBRARY_DIR="{{ DEPS }}/lib" \
           -D Boost_NO_SYSTEM_PATHS=ON \
-          -D Boost_NO_BOOST_CMAKE=ON \
+          -D BOOST_INCLUDEDIR="{{ DEPS }}/include" \
+          -D BOOST_LIBRARYDIR="{{ DEPS }}/lib" \
           -D Boost_USE_STATIC_LIBS=ON \
           -D CMAKE_BUILD_TYPE=Release \
           -D EIGEN3_INCLUDE_DIR="{{ DEPS }}/include/eigen3" \
