@@ -248,18 +248,18 @@
       args:
         chdir: "{{ WORK }}/boost/boost_{{ BOOST_VERSION }}"
 
+    # change bz2 lzma z into /deps/lib/libbz2.a /deps/lib/liblzma.a /deps/lib/libz.a
+    # to avoid libboost_iostreams link errors downstream
     - name: bjam boost
       ansible.builtin.shell: MACOSX_DEPLOYMENT_TARGET="{{ MIN_MACOS_VERSION }}" ARCHS="{{ ARCH }}" \
         ./b2 cflags="-fPIC {{ BUILD_TARGET }}" cxxflags="-fPIC {{ BUILD_TARGET }}" \
           --prefix="{{ DEPS }}" variant=release link=static \
           --with-serialization --with-iostreams --with-regex --with-system --with-program_options \
           -sBZIP2_INCLUDE="{{ DEPS }}/include" -sBZIP2_LIBRARY_PATH="{{ DEPS }}/lib" \
-          -sZLIB_INCLUDE="{{ DEPS }}/include" -sZLIB_LIBRARY_PATH="{{ DEPS }}/lib" && \
-          -sLZMA_INCLUDE="{{ DEPS }}/include" -sLZMA_LIBRARY_PATH="{{ DEPS }}/lib" && \
+          -sZLIB_INCLUDE="{{ DEPS }}/include" -sZLIB_LIBRARY_PATH="{{ DEPS }}/lib" \
+          -sLZMA_INCLUDE="{{ DEPS }}/include" -sLZMA_LIBRARY_PATH="{{ DEPS }}/lib" \
           install && \
-          # change bz2 lzma z into /deps/lib/libbz2.a /deps/lib/liblzma.a /deps/lib/libz.a
-          # to avoid libboost_iostreams link errors downstream
-          sed -i ".orig" "s/\([ :;]\)\(bz2\|lzma\|z\)/\1\${_BOOST_LIBDIR}\/lib\2.a/g" \
+          sed -E -i ".orig" "s/([ :;])(bz2|lzma|z)/\1\${_BOOST_LIBDIR}\/lib\2.a/g" \
               {{ DEPS }}/lib/cmake/boost_iostreams-`echo -n {{ BOOST_VERSION }} | tr _ .`/libboost_iostreams-variant-static.cmake
       args:
         chdir: "{{ WORK }}/boost/boost_{{ BOOST_VERSION }}"
