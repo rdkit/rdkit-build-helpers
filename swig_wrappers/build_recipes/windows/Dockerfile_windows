@@ -20,6 +20,16 @@ RUN [ "${ARCH}" = x86_64 ] || [ "${ARCH}" = i686 ] || \
 
 USER root
 
+# Set NIBR proxy
+ARG http_proxy=http://nibr-proxy.global.nibr.novartis.net:2011/
+ARG https_proxy=http://nibr-proxy.global.nibr.novartis.net:2011/
+ENV http_proxy=${http_proxy}
+ENV https_proxy=${https_proxy}
+
+# Add Novartis SSL certs otherwise HTTPS will not work
+COPY certs /etc/pki/ca-trust/source/anchors/
+RUN update-ca-trust extract
+
 RUN dnf update -y
 RUN dnf install -y patch bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel \
     mono-devel make gcc gcc-c++ git
@@ -224,8 +234,8 @@ RUN CC="${ARCH}-w64-mingw32-gcc -fPIC -I${DEPS}/include" \
 RUN make -j${BUILD_CONCURRENCY} && make -j${BUILD_CONCURRENCY} install
 
 WORKDIR ${SRC}
-ARG RDKIT_RELEASE="2024_09_1"
-ARG RDKIT_CHKSUM="e3ee5e05730be784ccfcd9b862297258"
+ARG RDKIT_RELEASE="2024_09_2"
+ARG RDKIT_CHKSUM="70eaa9001bfce5b090129eda93d68d06"
 ARG RDKIT_GIT_URL="https://github.com/rdkit/rdkit"
 ARG RDKIT_BRANCH="master"
 RUN if [ -n "${RDKIT_RELEASE}" ]; then \
