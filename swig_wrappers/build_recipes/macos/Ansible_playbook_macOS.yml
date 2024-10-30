@@ -704,7 +704,7 @@
           -e "25s|^\(%include \"enum\)typeunsafe\(\.swg\"\)\$|\1s\2|" \
           -e "26s|^#endif\$||" \
           Code/JavaWrappers/MolStandardize.i && \
-        sed -i -e ".orig" "s|\(assertTrue(\)\((result\.getStatus()\)\( \& PipelineStatus\.[A-Z_]*_ERROR\)\() != PipelineStatus.NO_EVENT)\)|\1PipelineStatus.swigToEnum\2.swigValue()\3.swigValue()\4|" \
+        sed -i ".orig" -e "s|\(assertTrue(\)\((result\.getStatus()\)\( \& PipelineStatus\.[A-Z_]*_ERROR\)\() != PipelineStatus.NO_EVENT)\)|\1PipelineStatus.swigToEnum\2.swigValue()\3.swigValue()\4|" \
           -e "s|\(assertEquals(\)\(result.getStage()\)\(, PipelineStage.[A-Z_]*)\)|\1PipelineStage.swigToEnum((int)\2)\3|" \
           Code/JavaWrappers/gmwrapper/src-test/org/RDKit/MolStandardizeTest.java
 
