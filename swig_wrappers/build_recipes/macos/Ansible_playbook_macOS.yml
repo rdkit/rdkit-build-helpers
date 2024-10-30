@@ -699,7 +699,14 @@
         sed -i ".orig" -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\"e968b96d7d37677065901b28978fa095\"|" \
           -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
           -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
-          External/AvalonTools/CMakeLists.txt
+          External/AvalonTools/CMakeLists.txt && \
+        sed -i ".orig" -e "24s|^#if defined SWIGJAVA\$||" \
+          -e "25s|^\(%include \"enum\)typeunsafe\(\.swg\"\)\$|\1s\2|" \
+          -e "26s|^#endif\$||" \
+          Code/JavaWrappers/MolStandardize.i && \
+        sed -i -e ".orig" "s|\(assertTrue(\)\((result\.getStatus()\)\( \& PipelineStatus\.[A-Z_]*_ERROR\)\() != PipelineStatus.NO_EVENT)\)|\1PipelineStatus.swigToEnum\2.swigValue()\3.swigValue()\4|" \
+          -e "s|\(assertEquals(\)\(result.getStage()\)\(, PipelineStage.[A-Z_]*)\)|\1PipelineStage.swigToEnum((int)\2)\3|" \
+          Code/JavaWrappers/gmwrapper/src-test/org/RDKit/MolStandardizeTest.java
 
       args:
         chdir: "{{ SRC }}/rdkit"

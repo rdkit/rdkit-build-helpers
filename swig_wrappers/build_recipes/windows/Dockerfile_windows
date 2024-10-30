@@ -20,16 +20,6 @@ RUN [ "${ARCH}" = x86_64 ] || [ "${ARCH}" = i686 ] || \
 
 USER root
 
-# Set NIBR proxy
-ARG http_proxy=http://nibr-proxy.global.nibr.novartis.net:2011/
-ARG https_proxy=http://nibr-proxy.global.nibr.novartis.net:2011/
-ENV http_proxy=${http_proxy}
-ENV https_proxy=${https_proxy}
-
-# Add Novartis SSL certs otherwise HTTPS will not work
-COPY certs /etc/pki/ca-trust/source/anchors/
-RUN update-ca-trust extract
-
 RUN dnf update -y
 RUN dnf install -y patch bzip2 ca-certificates openssl openssl-devel java-1.8.0-openjdk-devel \
     mono-devel make gcc gcc-c++ git
@@ -267,6 +257,15 @@ RUN sed -i -e "s|\(AVALONTOOLS_MD5SUM \)\"7a20c25a7e79f3344e0f9f49afa03351\"|\1\
     -e "s|\(AVALON_VERSION \)\"2\.0\.5-pre\.3\"|\1\"2.0.6-pre.2\"|" \
     -e "s|\(AVALONTOOLS_URL \"https://github.com/\)rohdebe1\(/ava-formake/archive/refs/tags/AvalonToolkit_\${AVALON_VERSION}.tar.gz\"\)|\1rdkit\2|" \
     External/AvalonTools/CMakeLists.txt
+
+# Patch for #7972
+RUN sed -i -e "24s|^#if defined SWIGJAVA\$||" \
+    -e "25s|^\(%include \"enum\)typeunsafe\(\.swg\"\)\$|\1s\2|" \
+    -e "26s|^#endif\$||" \
+    Code/JavaWrappers/MolStandardize.i
+RUN sed -i -e "s|\(assertTrue(\)\((result\.getStatus()\)\( \& PipelineStatus\.[A-Z_]*_ERROR\)\() != PipelineStatus.NO_EVENT)\)|\1PipelineStatus.swigToEnum\2.swigValue()\3.swigValue()\4|" \
+    -e "s|\(assertEquals(\)\(result.getStage()\)\(, PipelineStage.[A-Z_]*)\)|\1PipelineStage.swigToEnum((int)\2)\3|" \
+    Code/JavaWrappers/gmwrapper/src-test/org/RDKit/MolStandardizeTest.java
 
 RUN echo > win-${ARCH}.cmake -e \
     "set(CMAKE_SYSTEM_NAME Windows)\n" \
