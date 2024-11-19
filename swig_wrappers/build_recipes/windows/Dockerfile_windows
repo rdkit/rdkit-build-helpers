@@ -267,6 +267,11 @@ RUN sed -i -e "s|\(assertTrue(\)\((result\.getStatus()\)\( \& PipelineStatus\.[A
     -e "s|\(assertEquals(\)\(result.getStage()\)\(, PipelineStage.[A-Z_]*)\)|\1PipelineStage.swigToEnum((int)\2)\3|" \
     Code/JavaWrappers/gmwrapper/src-test/org/RDKit/MolStandardizeTest.java
 
+# Patch for #8019
+RUN sed -i "s|\(ForceField/\)UFF/\(DistanceConstraint\.h\)|\1\2|" Code/JavaWrappers/ForceField.i
+RUN sed -i "s|\(ForceFields::\)UFF::\(DistanceConstraintContrib\)|\1\2|" Code/JavaWrappers/gmwrapper/GraphMolJava.i
+RUN sed -i "s|\(ForceFields::\)UFF::\(DistanceConstraintContrib\)|\1\2|" Code/JavaWrappers/csharp_wrapper/GraphMolCSharp.i
+
 RUN echo > win-${ARCH}.cmake -e \
     "set(CMAKE_SYSTEM_NAME Windows)\n" \
     "set(CMAKE_SYSTEM_VERSION 1)\n" \

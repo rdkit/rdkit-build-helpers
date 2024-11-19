@@ -706,7 +706,10 @@
           Code/JavaWrappers/MolStandardize.i && \
         sed -i ".orig" -e "s|\(assertTrue(\)\((result\.getStatus()\)\( \& PipelineStatus\.[A-Z_]*_ERROR\)\() != PipelineStatus.NO_EVENT)\)|\1PipelineStatus.swigToEnum\2.swigValue()\3.swigValue()\4|" \
           -e "s|\(assertEquals(\)\(result.getStage()\)\(, PipelineStage.[A-Z_]*)\)|\1PipelineStage.swigToEnum((int)\2)\3|" \
-          Code/JavaWrappers/gmwrapper/src-test/org/RDKit/MolStandardizeTest.java
+          Code/JavaWrappers/gmwrapper/src-test/org/RDKit/MolStandardizeTest.java && \
+        sed -i ".orig" "s|\(ForceField/\)UFF/\(DistanceConstraint\.h\)|\1\2|" Code/JavaWrappers/ForceField.i && \
+        sed -i ".orig" "s|\(ForceFields::\)UFF::\(DistanceConstraintContrib\)|\1\2|" Code/JavaWrappers/gmwrapper/GraphMolJava.i && \
+        sed -i ".orig" "s|\(ForceFields::\)UFF::\(DistanceConstraintContrib\)|\1\2|" Code/JavaWrappers/csharp_wrapper/GraphMolCSharp.i
 
       args:
         chdir: "{{ SRC }}/rdkit"
